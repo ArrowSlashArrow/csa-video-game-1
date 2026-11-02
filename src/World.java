@@ -1,5 +1,3 @@
-import java.util.Scanner;
-
 import org.jline.terminal.Size;
 
 public class World {
@@ -9,8 +7,6 @@ public class World {
     // maybe we shouldn't generate the whole maze in one go...
     private char[][] world = new char[WORLD_HEIGHT][WORLD_WIDTH];
     public Player player = new Player();
-    private Scanner s;
-    
 
     public World() {
         for (int i = 0; i < WORLD_HEIGHT; i++) {
@@ -23,12 +19,12 @@ public class World {
                 }
             }
         }
-
-        this.s = new Scanner(System.in);
     }
 
     // renders world around player
     public void render() {
+        // move cursor to top-left of window
+        System.out.print("\u001b[H");
         Size termsize = Inputs.terminal.getSize();
         int width = termsize.getColumns();
         int height = termsize.getRows();
@@ -64,12 +60,22 @@ public class World {
     }
 
     public boolean get_input() {
-        String n = s.next();
-        if (n.equals("q")) { return true; }
-        if (n.equals("w")) this.player.y = Math.max(0, this.player.y - 1);
-        if (n.equals("s")) this.player.y = Math.min(999, this.player.y + 1);
-        if (n.equals("a")) this.player.x = Math.max(0, this.player.x - 1);
-        if (n.equals("d")) this.player.x = Math.min(999, this.player.x + 1);
+        switch (Inputs.get_keypress()) {
+            case Keybinds.MOVE_UP -> {
+                this.player.y = Math.max(0, this.player.y - 1);
+            }
+            case Keybinds.MOVE_LEFT -> {
+                this.player.x = Math.max(0, this.player.x - 1);
+            }
+            case Keybinds.MOVE_DOWN -> {
+                this.player.y = Math.min(999, this.player.y + 1);
+            }
+            case Keybinds.MOVE_RIGHT -> {
+                this.player.x = Math.min(999, this.player.x + 1);
+            }
+            case Keybinds.EXIT -> { return true; }
+            default -> { return false; }
+        }
 
         return false;
     }
