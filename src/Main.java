@@ -1,16 +1,21 @@
+
+import java.io.IOException;
+
 public class Main {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
+        Inputs.init();
+        
         World w = new World();
         w.player.x = 500;
         w.player.y = 500;
-        System.out.println(w.render());
+        w.render();
 
         while (true) {
             if (w.get_input()) {
                 break;
             }
 
-            System.out.println(w.render());
+            w.render();
         }
     }
 }
