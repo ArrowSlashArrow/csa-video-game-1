@@ -25,6 +25,9 @@ public class MazeGenerator {
 
     }
 
+    // using recursive backtracker. ensure that every point in the maze is reachable from every other point.
+    //
+    // Reference: https://en.wikipedia.org/wiki/Maze_generation_algorithm
     public char[][] generate_maze() {
         generate_maze(this.currentx, this.currenty);
         return this.maze;

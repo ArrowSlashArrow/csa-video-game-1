@@ -18,37 +18,73 @@ public class World {
         // worldgen
         MazeGenerator m = new MazeGenerator(WORLD_WIDTH, WORLD_HEIGHT);
         this.world = m.generate_maze();
+
+        player.x = WORLD_WIDTH / 2 + 1;
+        player.y = WORLD_HEIGHT / 2 + 1;
+
+        // ensure the player doesn't spawn in a wall
+        while (this.world[this.player.y][this.player.x] == '#') {
+            this.player.x += 1;
+        }
     }
+
+    /* UI concept
+    +--------------------------------+
+    | Maze Game v0.0.1 [..]  Inv.    |  < 1
+    | ##..##..##......###   - 1x ?   |
+    | ######..##..#######   - 2x ??  |
+    | ##..##..##@.....###            |
+    | ##..##########..###    Item    |
+    | ##..............###   +------+ |
+    | ############..#####   |  .%  | |
+    | ###################   |  @^  | |
+    |                       +------+ |
+    +--------------------------------+
+                            <- 30 ->
+
+    */
 
     // renders world around player
     public void render() {
-        // move cursor to top-left of window
-        System.out.print("\u001b[H");
+        // move cursor to top-left of window and reset styling
+        System.out.print("\u001b[H\u001b[0m");
         Size termsize = Inputs.terminal.getSize();
         int width = termsize.getColumns();
         int height = termsize.getRows();
+
+        // render buffer
+        String[] lines = new String[height];
+        String status_bar_template = "%-" + width + "s"; // align to left with spacing
+        lines[0] = String.format(status_bar_template, "Maze game v0.0.1 [11-03-2026]");
         
-        int start_x = this.player.x - (width / 2);
-        int start_y = this.player.y - (height / 2);
-
-        String result = "";
-
-        for (int i = start_y; i < start_y + height; i++) {
+        int sizebar_width = Math.min(40, width / 4);
+        
+        int maze_width = width - sizebar_width;
+        int maze_height = height - 1;
+        int start_x = this.player.x - (maze_width / 2);
+        int start_y = this.player.y - (maze_height / 2);
+        
+        // render maze first
+        int lines_index = 1;    // first line used by status bar
+        for (int i = start_y; i < start_y + maze_height; i++) {
+            String current_line = "";
             if (i < 0 || i >= WORLD_HEIGHT) {
-                result += " ".repeat(width);
+                current_line += " ".repeat(width);
+                lines[lines_index] = current_line;
+                lines_index += 1;
                 continue;
             }
 
-            for (int j = start_x; j < start_x + width; j++) {
+            for (int j = start_x; j < start_x + maze_width; j++) {
                 if (j < 0) {
                     // repeat space until the end of the line (outside of maze)
-                    result += " ".repeat(-j);
+                    current_line += " ".repeat(-j);
                     j = 0;
 
                 } 
                 if (j >= WORLD_WIDTH) {
                     // repeat space until the end of the line (outside of maze)
-                    result += " ".repeat(start_x + width - WORLD_WIDTH);
+                    current_line += " ".repeat(start_x + maze_width - WORLD_WIDTH);
                     break;
                 }
 
@@ -58,12 +94,16 @@ public class World {
                 } else {
                     ch = world[i][j];
                 }
-                result += char_colour(ch) + ch;
+                current_line += char_colour(ch) + ch;
             }
-            result += "\n";
-        }
 
-        System.out.print(result.substring(0, result.length() - 1)); // remove last \n
+            // fill the sidebar with spaces temporarily
+            current_line += " ".repeat(width - maze_width);
+            lines[lines_index] = current_line;
+
+            lines_index += 1;
+        }
+        System.out.print(String.join("\n", lines));
         System.out.flush();
     }
 
