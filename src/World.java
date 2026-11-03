@@ -1,24 +1,17 @@
 import org.jline.terminal.Size;
 
 public class World {
-    private final int WORLD_HEIGHT = 1000;
-    private final int WORLD_WIDTH = 1000;
+    public final int WORLD_HEIGHT = 101;
+    public final int WORLD_WIDTH = 101;
     // 1mb of memory isn't too bad
     // maybe we shouldn't generate the whole maze in one go...
     private char[][] world = new char[WORLD_HEIGHT][WORLD_WIDTH];
     public Player player = new Player();
 
     public World() {
-        for (int i = 0; i < WORLD_HEIGHT; i++) {
-            for (int j = 0; j < WORLD_WIDTH; j++) {
-                int m = (int)(Math.random() * 1000.0);
-                if (m < 80) {
-                    world[i][j] = '#';
-                } else {
-                    world[i][j] = '.';
-                }
-            }
-        }
+        // worldgen
+        MazeGenerator m = new MazeGenerator(WORLD_WIDTH, WORLD_HEIGHT);
+        this.world = m.generate_maze();
     }
 
     // renders world around player
@@ -41,7 +34,14 @@ public class World {
             }
 
             for (int j = start_x; j < start_x + width; j++) {
-                if (j < 0 || j >= WORLD_WIDTH) {
+                if (j < 0) {
+                    // repeat space until the end of the line (outside of maze)
+                    result += " ".repeat(-j);
+                    j = 0;
+
+                } 
+                if (j >= WORLD_WIDTH) {
+                    // repeat space until the end of the line (outside of maze)
                     result += " ".repeat(start_x + width - WORLD_WIDTH);
                     break;
                 }
@@ -62,16 +62,28 @@ public class World {
     public boolean get_input() {
         switch (Inputs.get_keypress()) {
             case Keybinds.MOVE_UP -> {
-                this.player.y = Math.max(0, this.player.y - 1);
+                int new_pos = Math.max(0, this.player.y - 1);
+                if (this.world[new_pos][this.player.x] == '.') {
+                    this.player.y = new_pos;
+                }
             }
             case Keybinds.MOVE_LEFT -> {
-                this.player.x = Math.max(0, this.player.x - 1);
+                int new_pos = Math.max(0, this.player.x - 1);
+                if (this.world[this.player.y][new_pos] == '.') {
+                    this.player.x = new_pos;
+                }
             }
             case Keybinds.MOVE_DOWN -> {
-                this.player.y = Math.min(999, this.player.y + 1);
+                int new_pos = Math.min(WORLD_HEIGHT - 1, this.player.y + 1);
+                if (this.world[new_pos][this.player.x] == '.') {
+                    this.player.y = new_pos;
+                }
             }
             case Keybinds.MOVE_RIGHT -> {
-                this.player.x = Math.min(999, this.player.x + 1);
+                int new_pos = Math.min(WORLD_WIDTH - 1, this.player.x + 1);
+                if (this.world[this.player.y][new_pos] == '.') {
+                    this.player.x = new_pos;
+                }
             }
             case Keybinds.EXIT -> { return true; }
             default -> { return false; }
