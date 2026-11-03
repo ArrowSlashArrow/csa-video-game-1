@@ -52,23 +52,31 @@ public class MazeGenerator {
             switch (d) {
                 case Direction.Up    -> { 
                     this.maze[cy - 1][cx] = '.'; 
+                    this.maze[cy - 1][cx + 1] = '.'; 
                     this.maze[cy - 2][cx] = '.';
+                    this.maze[cy - 2][cx + 1] = '.';
                     this.generate_maze(cx, cy - 2); 
                 }
                 case Direction.Down  -> { 
                     this.maze[cy + 1][cx] = '.'; 
+                    this.maze[cy + 1][cx + 1] = '.'; 
                     this.maze[cy + 2][cx] = '.'; 
+                    this.maze[cy + 2][cx + 1] = '.'; 
                     this.generate_maze(cx, cy + 2); 
                 }
                 case Direction.Left  -> { 
-                    this.maze[cy][cx - 1] = '.'; 
-                    this.maze[cy][cx - 2] = '.'; 
-                    this.generate_maze(cx - 2, cy); 
+                    this.maze[cy][cx - 1] = '.';  
+                    this.maze[cy][cx - 2] = '.';  
+                    this.maze[cy][cx - 3] = '.';  
+                    this.maze[cy][cx - 4] = '.';  
+                    this.generate_maze(cx - 4, cy); 
                 }
                 case Direction.Right -> { 
                     this.maze[cy][cx + 1] = '.'; 
                     this.maze[cy][cx + 2] = '.'; 
-                    this.generate_maze(cx + 2, cy); 
+                    this.maze[cy][cx + 3] = '.'; 
+                    this.maze[cy][cx + 4] = '.'; 
+                    this.generate_maze(cx + 4, cy); 
                 }
             }
         }
@@ -83,11 +91,11 @@ public class MazeGenerator {
         // & 8: not visited left
         int unvisited = 0;
         // check left wall
-        if (cx > 2 && this.maze[cy][cx - 2] == '#') {
+        if (cx > 4 && this.maze[cy][cx - 4] == '#') {
             unvisited |= (1 << 3);
         }
         // check right wall
-        if (cx < (maze_width - 3) && this.maze[cy][cx + 2] == '#') {
+        if (cx < (maze_width - 5) && this.maze[cy][cx + 4] == '#') {
             unvisited |= (1 << 1);
         }
 

@@ -1,8 +1,14 @@
 import org.jline.terminal.Size;
 
 public class World {
-    public final int WORLD_HEIGHT = 101;
-    public final int WORLD_WIDTH = 101;
+    /* colours  :)  */
+    private static final String DARK_GRAY = "\u001b[38;5;236m";
+    private static final String GRAY = "\u001b[38;5;241m";
+    private static final String CYAN = "\u001b[38;5;51m";
+    
+
+    public final int WORLD_HEIGHT = 501;    // should be odd
+    public final int WORLD_WIDTH = WORLD_HEIGHT - 1;     // should be even
     // 1mb of memory isn't too bad
     // maybe we shouldn't generate the whole maze in one go...
     private char[][] world = new char[WORLD_HEIGHT][WORLD_WIDTH];
@@ -28,7 +34,7 @@ public class World {
         String result = "";
 
         for (int i = start_y; i < start_y + height; i++) {
-            if (i < 0 || i > WORLD_HEIGHT) {
+            if (i < 0 || i >= WORLD_HEIGHT) {
                 result += " ".repeat(width);
                 continue;
             }
@@ -46,11 +52,13 @@ public class World {
                     break;
                 }
 
+                char ch;
                 if (this.player.x == j && this.player.y == i) {
-                    result += "@";
+                    ch = '@';
                 } else {
-                    result += world[i][j];
+                    ch = world[i][j];
                 }
+                result += char_colour(ch) + ch;
             }
             result += "\n";
         }
@@ -90,5 +98,14 @@ public class World {
         }
 
         return false;
+    }
+
+    public static String char_colour(char ch) {
+        switch (ch) {
+            case '#' -> { return DARK_GRAY; }
+            case '.' -> { return GRAY; }
+            case '@' -> { return CYAN; }
+            default -> { return ""; }
+        }
     }
 }
