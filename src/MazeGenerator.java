@@ -5,6 +5,8 @@ public class MazeGenerator {
     public int currentx;
     public int currenty;
 
+    private static final char SPACE = ',';
+
     public MazeGenerator(int width, int height) {
         assert width % 2 == 1;
         assert height % 2 == 1;
@@ -18,7 +20,7 @@ public class MazeGenerator {
 
         currentx = 1;
         currenty = 1;
-        maze[currenty][currentx] = '.';
+        maze[currenty][currentx] = SPACE;
 
         maze_width = width;
         maze_height = height;
@@ -54,31 +56,31 @@ public class MazeGenerator {
             // step 3.3 - invoke the routine recusively for the next cell
             switch (d) {
                 case Direction.Up    -> { 
-                    this.maze[cy - 1][cx] = '.'; 
-                    this.maze[cy - 1][cx + 1] = '.'; 
-                    this.maze[cy - 2][cx] = '.';
-                    this.maze[cy - 2][cx + 1] = '.';
+                    this.maze[cy - 1][cx] = SPACE; 
+                    this.maze[cy - 1][cx + 1] = SPACE; 
+                    this.maze[cy - 2][cx] = SPACE;
+                    this.maze[cy - 2][cx + 1] = SPACE;
                     this.generate_maze(cx, cy - 2); 
                 }
                 case Direction.Down  -> { 
-                    this.maze[cy + 1][cx] = '.'; 
-                    this.maze[cy + 1][cx + 1] = '.'; 
-                    this.maze[cy + 2][cx] = '.'; 
-                    this.maze[cy + 2][cx + 1] = '.'; 
+                    this.maze[cy + 1][cx] = SPACE; 
+                    this.maze[cy + 1][cx + 1] = SPACE; 
+                    this.maze[cy + 2][cx] = SPACE; 
+                    this.maze[cy + 2][cx + 1] = SPACE; 
                     this.generate_maze(cx, cy + 2); 
                 }
                 case Direction.Left  -> { 
-                    this.maze[cy][cx - 1] = '.';  
-                    this.maze[cy][cx - 2] = '.';  
-                    this.maze[cy][cx - 3] = '.';  
-                    this.maze[cy][cx - 4] = '.';  
+                    this.maze[cy][cx - 1] = SPACE;  
+                    this.maze[cy][cx - 2] = SPACE;  
+                    this.maze[cy][cx - 3] = SPACE;  
+                    this.maze[cy][cx - 4] = SPACE;  
                     this.generate_maze(cx - 4, cy); 
                 }
                 case Direction.Right -> { 
-                    this.maze[cy][cx + 1] = '.'; 
-                    this.maze[cy][cx + 2] = '.'; 
-                    this.maze[cy][cx + 3] = '.'; 
-                    this.maze[cy][cx + 4] = '.'; 
+                    this.maze[cy][cx + 2] = SPACE; 
+                    this.maze[cy][cx + 3] = SPACE; 
+                    this.maze[cy][cx + 4] = SPACE; 
+                    this.maze[cy][cx + 5] = SPACE; 
                     this.generate_maze(cx + 4, cy); 
                 }
             }
