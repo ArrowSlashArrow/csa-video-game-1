@@ -1,13 +1,16 @@
 import org.jline.terminal.Size;
 
 public class World {
-    /* colours  :)  */
-    private static final String DARK_GRAY = "\u001b[38;5;236m";
-    private static final String GRAY = "\u001b[38;5;241m";
-    private static final String CYAN = "\u001b[38;5;51m";
+    /* colours  :)  */                        // code here vvv
+    private static final String DARK_GRAY   = "\u001b[38;5;236m";
+    private static final String GRAY        = "\u001b[38;5;241m";
+    private static final String CYAN        = "\u001b[38;5;51m";
+    private static final String CLUE        = "\u001b[38;5;9m";
+
+    private static final transient boolean COLLISIONS_ENABLED = true; 
     
 
-    public final int WORLD_HEIGHT = 501;    // should be odd
+    public final int WORLD_HEIGHT = 1001;    // should be odd
     public final int WORLD_WIDTH = WORLD_HEIGHT - 1;     // should be even
     // 1mb of memory isn't too bad
     // maybe we shouldn't generate the whole maze in one go...
@@ -19,6 +22,8 @@ public class World {
         MazeGenerator m = new MazeGenerator(WORLD_WIDTH, WORLD_HEIGHT);
         this.world = m.generate_maze();
 
+        generate_clues();
+
         player.x = WORLD_WIDTH / 2 + 1;
         player.y = WORLD_HEIGHT / 2 + 1;
 
@@ -26,6 +31,42 @@ public class World {
         while (this.world[this.player.y][this.player.x] == '#') {
             this.player.x += 1;
         }
+    }
+
+
+    private void generate_clues() {
+        double c = Math.hypot(WORLD_WIDTH, WORLD_HEIGHT);   // constant for scaling circles
+        int mx = WORLD_WIDTH / 2;   // midpoint
+        int my = WORLD_HEIGHT / 2;
+
+        generate_ring(mx, my, c / 25.0, 3);
+        generate_ring(mx, my, c / 15.0, 4);
+        generate_ring(mx, my, c / 11.0, 4);
+        generate_ring(mx, my, c / 8.0, 4);
+        generate_ring(mx, my, c / 6.0, 4);
+        generate_ring(mx, my, c / 4.0, 4);
+        generate_ring(mx, my, c / 3.0, 4);
+
+    }
+
+    private void generate_ring(int mx, int my, double radius, int clues) {
+        for (int i = 0; i < clues; i++) {
+            double angle = Math.random() * Math.TAU;
+            int cx = (int)(Math.cos(angle) * radius + mx);
+            int cy = (int)(Math.sin(angle) * radius + my);
+            if (this.world[cy][cx] != '#') {
+                i -= 1;
+                continue;
+            }
+            if (check_clue(cx, cy)) {
+                this.world[cy][cx] = '%';
+            }
+        }
+    }
+
+    // check that the clue has at least once air pocket next to it (so you can access it)
+    private boolean check_clue(int x, int y) {
+        return true;    // todo
     }
 
     /* UI concept
@@ -41,7 +82,6 @@ public class World {
     |                       +------+ |
     +--------------------------------+
                             <- 30 ->
-
     */
 
     // renders world around player
@@ -57,14 +97,15 @@ public class World {
         String status_bar_template = "%-" + width + "s"; // align to left with spacing
         lines[0] = String.format(status_bar_template, "Maze game v0.0.1 [11-03-2026]");
         
-        int sizebar_width = Math.min(40, width / 4);
+        int sidebar_width = Math.min(40, width / 4);
         
-        int maze_width = width - sizebar_width;
+        int maze_width = width - sidebar_width - 1; // -1 for 1-char buffer between maze and sidebar
         int maze_height = height - 1;
         int start_x = this.player.x - (maze_width / 2);
         int start_y = this.player.y - (maze_height / 2);
         
-        // render maze first
+        /* render maze */
+
         int lines_index = 1;    // first line used by status bar
         for (int i = start_y; i < start_y + maze_height; i++) {
             String current_line = "";
@@ -103,6 +144,21 @@ public class World {
 
             lines_index += 1;
         }
+
+        /* render sidebar */
+
+        int sidebar_start = width - sidebar_width;
+        lines[0] = write_string(lines[0], "Inventory", sidebar_start);
+
+        int item_line_index = 1;
+        for (Item i : this.player.items) {
+            if (!(i != null)) continue;
+            item_line_index += 1;
+            String item_str = String.format(" - %dx %s", i.amount, i.name);
+            lines[item_line_index] = write_string(lines[item_line_index], item_str, sidebar_start);
+        }
+
+
         System.out.print(String.join("\n", lines));
         System.out.flush();
     }
@@ -111,25 +167,25 @@ public class World {
         switch (Inputs.get_keypress()) {
             case Keybinds.MOVE_UP -> {
                 int new_pos = Math.max(0, this.player.y - 1);
-                if (this.world[new_pos][this.player.x] == '.') {
+                if (check_coll(this.player.x, new_pos)) {
                     this.player.y = new_pos;
                 }
             }
             case Keybinds.MOVE_LEFT -> {
                 int new_pos = Math.max(0, this.player.x - 1);
-                if (this.world[this.player.y][new_pos] == '.') {
+                if (check_coll(new_pos, this.player.y)) {
                     this.player.x = new_pos;
                 }
             }
             case Keybinds.MOVE_DOWN -> {
                 int new_pos = Math.min(WORLD_HEIGHT - 1, this.player.y + 1);
-                if (this.world[new_pos][this.player.x] == '.') {
+                if (check_coll(this.player.x, new_pos)) {
                     this.player.y = new_pos;
                 }
             }
             case Keybinds.MOVE_RIGHT -> {
                 int new_pos = Math.min(WORLD_WIDTH - 1, this.player.x + 1);
-                if (this.world[this.player.y][new_pos] == '.') {
+                if (check_coll(new_pos, this.player.y)) {
                     this.player.x = new_pos;
                 }
             }
@@ -142,10 +198,35 @@ public class World {
 
     public static String char_colour(char ch) {
         switch (ch) {
-            case '#' -> { return DARK_GRAY; }
-            case '.' -> { return GRAY; }
+            case '.' -> { return DARK_GRAY; }
+            case '#' -> { return GRAY; }
             case '@' -> { return CYAN; }
+            case '%' -> { return CLUE; }
             default -> { return ""; }
         }
+    }
+
+    // return true if good to go there
+    // return false if there's an obstruction
+    private boolean check_coll(int nx, int ny) {
+        switch (this.world[ny][nx]) {
+            case '@' -> { return true; }
+            case '.' -> { return true; }
+            case '#' -> { return false; }
+            case '%' -> {
+                // activate the clue at this specific location
+
+                return false; 
+            }
+            default ->  { return true; }
+        }
+    }
+
+
+    private String write_string(String original, String paste, int start_pos) {
+        String first = original.substring(0, start_pos) + paste;
+        int both_length = first.length();
+        if (both_length < original.length()) first += original.substring(both_length);
+        return first;
     }
 }

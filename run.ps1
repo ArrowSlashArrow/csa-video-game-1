@@ -1,11 +1,11 @@
 cd src;
 try {
-    rm  *.class
-    javac -cp "../lib/jline-4.4.3.jar;." .\Main.java
-    java --enable-native-access=ALL-UNNAMED -cp "../lib/jline-4.4.3.jar;." -Xss4m Main 
+    rm  *.class # remove old class files (which would still run when the compile fails)
+    $libraries = "../lib/jline-4.4.3.jar;." # declare libraries
+    javac -cp $libraries .\Main.java        # compile
+    java --enable-native-access=ALL-UNNAMED -cp $libraries -Xss8m Main # run
 } catch {
-    echo $_
+    echo $_ # forward error to stdout
 } finally {
-    cd $PSScriptRoot;
+    cd $PSScriptRoot;    # return to project root when done
 }
-    

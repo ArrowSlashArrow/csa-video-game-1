@@ -17,10 +17,8 @@ public class Main {
 class GameRunner {
     public void run() {
         World w = new World();
-        w.player.x = w.WORLD_WIDTH / 2 + 1;
-        w.player.y = w.WORLD_HEIGHT / 2 + 1;
+        System.out.println("Loading maze...");
         w.render();
-
         while (true) {
             if (w.get_input()) {
                 break;
