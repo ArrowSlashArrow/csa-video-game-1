@@ -3,9 +3,11 @@ import org.jline.terminal.Size;
 public class World {
     /* colours  :)  */                        // code here vvv
     private static final String DARK_GRAY   = "\u001b[38;5;236m";
+    private static final String MID_GRAY    = "\u001b[38;5;238m";
     private static final String GRAY        = "\u001b[38;5;241m";
     private static final String CYAN        = "\u001b[38;5;51m";
     private static final String CLUE        = "\u001b[38;5;9m";
+    private static final String FAINT_CLUE  = "\u001b[38;5;52m";
     private static final String RESET       = "\u001b[0m";
 
     private static final int VISIBILITY_RADIUS = 20;
@@ -18,12 +20,17 @@ public class World {
     private char[][] world = new char[WORLD_HEIGHT][WORLD_WIDTH];
     public Player player = new Player();
 
+    private Point[] yellow_keycards = new Point[10];
+
+
     public World() {
         // worldgen
         MazeGenerator m = new MazeGenerator(WORLD_WIDTH, WORLD_HEIGHT);
         this.world = m.generate_maze();
-
         generate_clues();
+
+        // generate exit and exit code
+
 
         player.x = WORLD_WIDTH / 2 + 1;
         player.y = WORLD_HEIGHT / 2 + 1;
@@ -40,51 +47,37 @@ public class World {
         int mx = WORLD_WIDTH / 2;   // midpoint
         int my = WORLD_HEIGHT / 2;
 
-        generate_ring(mx, my, c / 25.0, 6);
-        generate_ring(mx, my, c / 15.0, 7);
-        generate_ring(mx, my, c / 11.0, 9);
-        generate_ring(mx, my, c / 8.0, 10);
-        generate_ring(mx, my, c / 6.0, 11);
-        generate_ring(mx, my, c / 4.0, 12);
-        generate_ring(mx, my, c / 3.0, 13);
-
+        generate_ring(mx, my, c / 10.0, 2);
+        generate_ring(mx, my, c / 25.0, 8);
+        generate_ring(mx, my, c / 15.0, 9);
+        generate_ring(mx, my, c / 11.0, 10);
+        generate_ring(mx, my, c / 8.0, 12);
+        generate_ring(mx, my, c / 6.0, 14);
+        generate_ring(mx, my, c / 4.0, 17);
+        generate_ring(mx, my, c / 3.0, 20);
     }
 
     private void generate_ring(int mx, int my, double radius, int clues) {
+        double ring_width = 10.0;
         for (int i = 0; i < clues; i++) {
             double angle = Math.random() * Math.TAU;
-            double radius_jiggle = 10.0 * (Math.random() - 0.5);
+            double radius_jiggle = ring_width * (Math.random() - 0.5);
             int cx = (int)(Math.cos(angle) * (radius + radius_jiggle) + mx);
             int cy = (int)(Math.sin(angle) * (radius + radius_jiggle) + my);
-            if (this.world[cy][cx] != '#') {
+            if (this.world[cy][cx] != '#') { // only replace walls with clues
                 i -= 1;
                 continue;
             }
-            if (check_clue(cx, cy)) {
-                this.world[cy][cx] = '%';
+            this.world[cy][cx] = '%';
+
+            int location_hash = hash_location(cx, cy);
+
+            if (picker(location_hash, 4) == 3) {
+                int item_hash = picker(location_hash, 100);
+                
             }
         }
     }
-
-    // check that the clue has at least once air pocket next to it (so you can access it)
-    private boolean check_clue(int x, int y) {
-        return true;    // todo
-    }
-
-    /* UI concept
-    +--------------------------------+
-    | Maze Game v0.0.1 [..]  Inv.    |  < 1
-    | ##..##..##......###   - 1x ?   |
-    | ######..##..#######   - 2x ??  |
-    | ##..##..##@.....###            |
-    | ##..##########..###    Item    |
-    | ##..............###   +------+ |
-    | ############..#####   |  .%  | |
-    | ###################   |  @^  | |
-    |                       +------+ |
-    +--------------------------------+
-                            <- 30 ->
-    */
 
     // renders world around player
     public void render() {
@@ -138,9 +131,14 @@ public class World {
                     ch = world[i][j];
                 }
 
-                boolean not_visible = Math.hypot(j - this.player.x, (i - this.player.y) * 2) > VISIBILITY_RADIUS;
-                if (not_visible && ch == '#') ch = ',';
-                else if (not_visible && ch == ',') ch = ' ';
+                if (Math.hypot(j - this.player.x, (i - this.player.y) * 2) > VISIBILITY_RADIUS) {
+                    switch (ch) {
+                        case '#' -> { ch = ':'; }
+                        case ',' -> { ch = ' '; }
+                        case '%' -> { ch = '!'; }
+                        default -> {}
+                    }
+                }
 
                 current_line += ch;
             }
@@ -244,9 +242,11 @@ public class World {
     public static String char_colour(char ch) {
         switch (ch) {
             case ',' -> { return DARK_GRAY; }
+            case ':' -> { return MID_GRAY; }
             case '#' -> { return GRAY; }
             case '@' -> { return CYAN; }
             case '%' -> { return CLUE; }
+            case '!' -> { return FAINT_CLUE; }
             default ->  { return RESET; }
         }
     }
@@ -259,7 +259,15 @@ public class World {
             case '.' -> { return true; }
             case '#' -> { return false; }
             case '%' -> {
+                // since we don't store what each % holds, determine what it 
                 // activate the clue at this specific location
+                int location_hash = hash_location(nx, ny);
+
+                switch (picker(location_hash, 3)) {
+                    case 0 -> { // 
+                        
+                    }
+                }
 
                 return false; 
             }
@@ -271,12 +279,9 @@ public class World {
         return x>=y?x*x+x+y:x+y*y;
     }
 
-
     private String write_string(String original, String paste, int start_pos) {
         int end = Math.min(start_pos + paste.length(), original.length());
-    return original.substring(0, start_pos)
-            + paste
-            + original.substring(end);
+        return original.substring(0, start_pos) + paste + original.substring(end);
     }
 
     private String center_string(String original, int center_amount) {
@@ -286,9 +291,112 @@ public class World {
         int right = buffer_space - left;
         return " ".repeat(left) + original + " ".repeat(right);
     }
+    
+    private int picker(int hash, int m) {
+        return ((hash * 71) >> 5) % m;
+    }
+
+    private Item item_hash(int x, int y) {
+        int loc_hash = hash_location(x, y);
+        int item_hash = picker(loc_hash, 100);
+        return choose_item(picker(loc_hash, 4), item_hash);
+    }
+
+    private Item choose_item(int itype, int item_hash) {
+        switch (itype) {
+            case 0 -> { // note
+                if (0 <= item_hash && item_hash < 20) {
+                    Item note = new Item("Note that points somewhere", 1, System.currentTimeMillis());
+                    /* todo: set image of note to be some compass or something */
+                    return note;
+                } else if (20 < item_hash && item_hash <= 30) {
+                    Item note = new Item("Partial exit code", 1, System.currentTimeMillis());
+                    note.image = "The code is: \n[   4  2  8]";
+                } else {
+                    /* there is a <item> nearby */
+                }
+            }
+            case 1 -> { // encrypted message with varying ciphers
+                Item note = choose_item(0, item_hash);
+                if (0 <= item_hash && item_hash < 15) {
+                    // base64 encode (encode each line individually)
+
+                }
+
+            }
+        };
+    }
+
+    // encode each line individually
+    private String b64_encode(String s) {
+        String[] encoded = new String[(int)(s.chars().filter(ch -> ch == '\n').count())];
+        int line_idx = 0;
+        for (String line : s.split("\n")) {
+            encoded[line_idx] = b64_encode_segment(line);
+            line_idx += 1;
+        }
+
+        return String.join("\n", encoded);
+    }
+
+    public static String BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+    private String b64_encode_segment(String s) {
+        String encoded = "";
+        while (s.length() >= 3) {
+            int[] segment = s.substring(0, 3).chars().toArray();
+            s = s.substring(3);
+            int segm = (segment[0] << 16) | (segment[1] << 8) | segment[2];
+
+            for (int j = 0; j < 4; j++) {
+                int b64char = (segm >> (18 - j * 6)) & 0b111111;
+                encoded += BASE64_CHARS.charAt(b64char);
+            }
+        }
+
+        if (s.length() == 2) {
+            int[] segment = s.chars().toArray();
+            int segm = (segment[0] << 10) | (segment[1] << 2);
+            for (int j = 0; j < 3; j++) {
+                int b64char = (segm >> (18 - j * 6)) & 0b111111;
+                encoded += BASE64_CHARS.charAt(b64char);
+            }
+            encoded += "=";
+        } else if (s.length() == 1) {
+            int segm = (int)s.charAt(0) << 4;
+            for (int j = 0; j < 2; j++) {
+                int b64char = (segm >> (18 - j * 6)) & 0b111111;
+                encoded += BASE64_CHARS.charAt(b64char);
+            }
+            encoded += "==";
+        }
+
+        return encoded;
+        
+    }
 }
 
 /* types of clues */
-// 1. direct note
-// 2. encrypted note
-// 3. 
+// 1. direct note (note item)
+//  - direction: arrow pointing to where another clue is
+//  - code is 123... for exit (requires keycard)    [10%]
+//  - there is a yellow keycard nearby
+// 2. encrypted message: same variants as first type but encrypted 
+//  - base64
+//  - caesar cipher
+//  - to hex
+//  - 1 + 3
+//  - 2 + 3, 
+//  - 1 + 2 + 3 
+// 3. utility item 
+//  - compass               [0-15]  15% points to some clue that's within 200 units of where it was found
+//  - dead-end marker       [15-40] 25% visual marker for the player
+//  - grenade               [40-60] 20% blows a hole in the wall
+//  - yellow keycard        [60-70] 10% unlocks some more clues
+//  - blue keycard          [70-72] 2%  unlocks exit      
+//  - flashlight            [72-92] 20% illuminates more stuff
+//  - radar (for clues)     [92-97] 5%  scans nearby area for possible clues (not that reliable)
+//  - nothing               [97-100]    
+// 4. map (around a fixed location but tells you where it is)
+
+record Point(int x, int y) {}
