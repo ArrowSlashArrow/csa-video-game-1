@@ -1,3 +1,4 @@
+import java.util.ArrayList;
 import org.jline.terminal.Size;
 
 public class World {
@@ -8,6 +9,7 @@ public class World {
     private static final String CYAN        = "\u001b[38;5;51m";
     private static final String CLUE        = "\u001b[38;5;9m";
     private static final String FAINT_CLUE  = "\u001b[38;5;52m";
+    private static final String DOOR        = "\u001b[38;5;39m";
     private static final String RESET       = "\u001b[0m";
 
     private static final int VISIBILITY_RADIUS = 20;
@@ -20,8 +22,16 @@ public class World {
     private char[][] world = new char[WORLD_HEIGHT][WORLD_WIDTH];
     public Player player = new Player();
 
-    private Point[] yellow_keycards = new Point[10];
+    private ArrayList<Point> yellow_keycards = new ArrayList<>();
+    private ArrayList<Point> clues = new ArrayList<>();
+    private ArrayList<Point> found_clues = new ArrayList<>();
 
+    // clue GUI
+    private boolean opened_clue = false;
+    private Point opened_clue_location;
+    private Item clue_item;
+
+    private long EXIT_CODE;
 
     public World() {
         // worldgen
@@ -29,8 +39,16 @@ public class World {
         this.world = m.generate_maze();
         generate_clues();
 
-        // generate exit and exit code
+        EXIT_CODE = (int)(Math.random() * 10_000_000_000L);
 
+        // generate exit door
+        while (true) { 
+            int random_position = (int)(Math.random() * WORLD_WIDTH);
+            if (world[1][random_position] == '.') {
+                world[0][random_position] = '^';
+                break;
+            }
+        }
 
         player.x = WORLD_WIDTH / 2 + 1;
         player.y = WORLD_HEIGHT / 2 + 1;
@@ -40,7 +58,6 @@ public class World {
             this.player.x += 1;
         }
     }
-
 
     private void generate_clues() {
         double c = Math.hypot(WORLD_WIDTH, WORLD_HEIGHT);   // constant for scaling circles
@@ -57,9 +74,9 @@ public class World {
         generate_ring(mx, my, c / 3.0, 20);
     }
 
-    private void generate_ring(int mx, int my, double radius, int clues) {
+    private void generate_ring(int mx, int my, double radius, int c) {
         double ring_width = 10.0;
-        for (int i = 0; i < clues; i++) {
+        for (int i = 0; i < c; i++) {
             double angle = Math.random() * Math.TAU;
             double radius_jiggle = ring_width * (Math.random() - 0.5);
             int cx = (int)(Math.cos(angle) * (radius + radius_jiggle) + mx);
@@ -70,12 +87,12 @@ public class World {
             }
             this.world[cy][cx] = '%';
 
-            int location_hash = hash_location(cx, cy);
+            Item item = get_item_at(cx, cy);
 
-            if (picker(location_hash, 4) == 3) {
-                int item_hash = picker(location_hash, 100);
-                
+            if (item.name.equals("Yellow keycard")) {
+                yellow_keycards.add(new Point(cx, cy));
             }
+            clues.add(new Point(cx, cy));
         }
     }
 
@@ -153,14 +170,14 @@ public class World {
         /* render sidebar */
 
         int sidebar_start = width - sidebar_width;
-        lines[0] = write_string(lines[0], "Inventory", sidebar_start);
+        lines[0] = Utils.write_string(lines[0], "Inventory", sidebar_start);
 
         int item_line_index = 1;
         for (Item i : this.player.items) {
             if (!(i != null) || i.amount > 0) continue;
             item_line_index += 1;
             String item_str = String.format(" - %dx %s", i.amount, i.name);
-            lines[item_line_index] = write_string(lines[item_line_index], item_str, sidebar_start);
+            lines[item_line_index] = Utils.write_string(lines[item_line_index], item_str, sidebar_start);
         }
 
         /* gui elements (in the maze area) */
@@ -168,7 +185,7 @@ public class World {
         // objective (at the top)
         int objective_dialog_width = 29;
         String objective_dialog_covers = "-".repeat(objective_dialog_width);
-        String objective_dialog_message = "|" + center_string(get_objective(this.player.level), (objective_dialog_width - 2)) + "|";
+        String objective_dialog_message = "|" + Utils.center_string(get_objective(this.player.level), (objective_dialog_width - 2)) + "|";
 
         int objective_dialog_topleft_x = (maze_width - objective_dialog_width) / 2;
 
@@ -178,7 +195,7 @@ public class World {
 
         for (int i = 0; i < objective_dialog.length; i++) {
             int idx = i + 2;
-            lines[idx] = write_string(
+            lines[idx] = Utils.write_string(
                 lines[idx], 
                 objective_dialog[i], 
                 objective_dialog_topleft_x
@@ -202,6 +219,10 @@ public class World {
     private String get_objective(int player_level) {
         switch (player_level) {
             case 0 -> { return "Locate a clue (%)."; }
+            case 1 -> { return "Find a yellow keycard"; }   // if the player does not have a yellow keycard
+            case 2 -> { return "Find a blue keycard."; }    // if the player does not have a blue keycard
+            case 3 -> { return "Locate an exit clue."; }    // if the player has a blue keycard
+            case 4 -> { return "Locate the exit."; }        // if the player has the code
             default -> { return ""; }
         }
     }
@@ -232,6 +253,14 @@ public class World {
                     this.player.x = new_pos;
                 }
             }
+            case Keybinds.PICK_UP -> {
+                if (!this.opened_clue) { return false; }
+                if (this.clue_item.id == 0) { return false; } // can't pick up nothing
+                this.player.items.add(clue_item);
+                this.clue_item = new Item("- nothing -", 0, 0);
+
+                found_clues.add(this.opened_clue_location);
+            }
             case Keybinds.EXIT -> { return true; }
             default -> { return false; }
         }
@@ -247,6 +276,7 @@ public class World {
             case '@' -> { return CYAN; }
             case '%' -> { return CLUE; }
             case '!' -> { return FAINT_CLUE; }
+            case '^' -> { return DOOR; }
             default ->  { return RESET; }
         }
     }
@@ -259,47 +289,21 @@ public class World {
             case '.' -> { return true; }
             case '#' -> { return false; }
             case '%' -> {
-                // since we don't store what each % holds, determine what it 
-                // activate the clue at this specific location
-                int location_hash = hash_location(nx, ny);
-
-                switch (picker(location_hash, 3)) {
-                    case 0 -> { // 
-                        
-                    }
+                Point here = new Point(nx, ny);
+                Item item;
+                
+                if (found_clues.contains(here)) {
+                    item = new Item("- nothing -", 0, 0);
+                } else {
+                    item = get_item_at(nx, ny);
                 }
 
+                opened_clue = true;
+                clue_item = item;
                 return false; 
             }
             default ->  { return true; }
         }
-    }
-
-    private int hash_location(int x, int y) {
-        return x>=y?x*x+x+y:x+y*y;
-    }
-
-    private String write_string(String original, String paste, int start_pos) {
-        int end = Math.min(start_pos + paste.length(), original.length());
-        return original.substring(0, start_pos) + paste + original.substring(end);
-    }
-
-    private String center_string(String original, int center_amount) {
-        if (center_amount <= original.length()) return original;
-        int buffer_space = center_amount - original.length();
-        int left = buffer_space / 2;
-        int right = buffer_space - left;
-        return " ".repeat(left) + original + " ".repeat(right);
-    }
-    
-    private int picker(int hash, int m) {
-        return ((hash * 71) >> 5) % m;
-    }
-
-    private Item item_hash(int x, int y) {
-        int loc_hash = hash_location(x, y);
-        int item_hash = picker(loc_hash, 100);
-        return choose_item(picker(loc_hash, 4), item_hash);
     }
 
     private Item choose_item(int itype, int item_hash) {
@@ -307,96 +311,75 @@ public class World {
             case 0 -> { // note
                 if (0 <= item_hash && item_hash < 20) {
                     Item note = new Item("Note that points somewhere", 1, System.currentTimeMillis());
-                    /* todo: set image of note to be some compass or something */
                     return note;
                 } else if (20 < item_hash && item_hash <= 30) {
                     Item note = new Item("Partial exit code", 1, System.currentTimeMillis());
-                    note.image = "The code is: \n[   4  2  8]";
+                    note.image = "The code is: \n[   4  2  8]"; // todo: randomly pick digits
                 } else {
-                    /* there is a <item> nearby */
+                    /* there is a <item> nearby, <distance> units away */
+                    // choose an item that hasn't been opened
+                    // if everything is opened, return a Nothing
+
                 }
             }
             case 1 -> { // encrypted message with varying ciphers
                 Item note = choose_item(0, item_hash);
-                if (0 <= item_hash && item_hash < 15) {
-                    // base64 encode (encode each line individually)
-
+                if (0 <= item_hash && item_hash < 15) { // b64 encode
+                    note.text = Utils.b64_encode(note.text);
+                } else if (15 <= item_hash && item_hash < 30) { // hex
+                    note.text = Utils.hex_encode(note.text);
+                } else if (30 <= item_hash && item_hash < 40) { // bin
+                    note.text = Utils.bin_encode(note.text);
+                } else if (40 <= item_hash && item_hash < 65) { // hex + b64
+                    note.text = Utils.b64_encode(Utils.hex_encode(note.text));
+                } else if (65 <= item_hash && item_hash < 80) { // bin + b64
+                    note.text = Utils.b64_encode(Utils.bin_encode(note.text));
+                } else if (80 <= item_hash) { // hex + bin + b64
+                    note.text = Utils.b64_encode(Utils.bin_encode(Utils.hex_encode(note.text)));
                 }
-
             }
-        };
+        }
     }
 
-    // encode each line individually
-    private String b64_encode(String s) {
-        String[] encoded = new String[(int)(s.chars().filter(ch -> ch == '\n').count())];
-        int line_idx = 0;
-        for (String line : s.split("\n")) {
-            encoded[line_idx] = b64_encode_segment(line);
-            line_idx += 1;
-        }
-
-        return String.join("\n", encoded);
-    }
-
-    public static String BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
-    private String b64_encode_segment(String s) {
-        String encoded = "";
-        while (s.length() >= 3) {
-            int[] segment = s.substring(0, 3).chars().toArray();
-            s = s.substring(3);
-            int segm = (segment[0] << 16) | (segment[1] << 8) | segment[2];
-
-            for (int j = 0; j < 4; j++) {
-                int b64char = (segm >> (18 - j * 6)) & 0b111111;
-                encoded += BASE64_CHARS.charAt(b64char);
-            }
-        }
-
-        if (s.length() == 2) {
-            int[] segment = s.chars().toArray();
-            int segm = (segment[0] << 10) | (segment[1] << 2);
-            for (int j = 0; j < 3; j++) {
-                int b64char = (segm >> (18 - j * 6)) & 0b111111;
-                encoded += BASE64_CHARS.charAt(b64char);
-            }
-            encoded += "=";
-        } else if (s.length() == 1) {
-            int segm = (int)s.charAt(0) << 4;
-            for (int j = 0; j < 2; j++) {
-                int b64char = (segm >> (18 - j * 6)) & 0b111111;
-                encoded += BASE64_CHARS.charAt(b64char);
-            }
-            encoded += "==";
-        }
-
-        return encoded;
-        
+    private Item get_item_at(int x, int y) {
+        int loc_hash = Utils.hash_location(x, y);
+        int item_hash = Utils.picker(loc_hash, 100);
+        return choose_item(Utils.picker(loc_hash, 4), item_hash);
     }
 }
 
 /* types of clues */
 // 1. direct note (note item)
 //  - direction: arrow pointing to where another clue is
+    // Item - note, ID: <unique>
 //  - code is 123... for exit (requires keycard)    [10%]
+    // Item - note. ID: <unique> 
 //  - there is a yellow keycard nearby
+    // Item - note, ID: <unique>
 // 2. encrypted message: same variants as first type but encrypted 
 //  - base64
-//  - caesar cipher
+//  - to binary
 //  - to hex
 //  - 1 + 3
 //  - 2 + 3, 
 //  - 1 + 2 + 3 
 // 3. utility item 
 //  - compass               [0-15]  15% points to some clue that's within 200 units of where it was found
+    // Item - compass, ID: 1, data: fixed location, render: compass art to point to a location
 //  - dead-end marker       [15-40] 25% visual marker for the player
+    // Item - marker, ID: 2, data: none, action: use - place on ground at player
 //  - grenade               [40-60] 20% blows a hole in the wall
+    // Item - grenade, ID: 3, data: none, action: use - detonate at current location
 //  - yellow keycard        [60-70] 10% unlocks some more clues
-//  - blue keycard          [70-72] 2%  unlocks exit      
+    // Item - yel_key, ID: <unique>, data: none, action: use - to unlock key
+//  - blue keycard          [70-72] 2%  unlocks exit        
+    // same as above
 //  - flashlight            [72-92] 20% illuminates more stuff
+    // Item - fllight, ID: 4, data: battery (0 - 1), action: use - to illuminate thing
 //  - radar (for clues)     [92-97] 5%  scans nearby area for possible clues (not that reliable)
+    // Item - radar, ID: 5, data: battery (0 - 1), action: use - ping for locations (shows up on item view)
 //  - nothing               [97-100]    
 // 4. map (around a fixed location but tells you where it is)
+    // Item - map, ID: <unique>, data: center point, render: area
 
 record Point(int x, int y) {}
