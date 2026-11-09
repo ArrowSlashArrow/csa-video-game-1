@@ -89,7 +89,7 @@ public class World {
 
             Item item = get_item_at(cx, cy);
 
-            if (item.name.equals("Yellow keycard")) {
+            if (item.id == 5) {
                 yellow_keycards.add(new Point(cx, cy));
             }
             clues.add(new Point(cx, cy));
@@ -107,7 +107,7 @@ public class World {
         // render buffer
         String[] lines = new String[height];
         String status_bar_template = "%-" + width + "s"; // align to left with spacing
-        lines[0] = String.format(status_bar_template, "Maze game v0.0.1 [11-03-2026]");
+        lines[0] = String.format(status_bar_template, "Maze game v0.1.1 [11-09-2026]");
         
         int sidebar_width = Math.min(40, width / 4);
         
@@ -176,7 +176,7 @@ public class World {
         for (Item i : this.player.items) {
             if (!(i != null) || i.amount > 0) continue;
             item_line_index += 1;
-            String item_str = String.format(" - %dx %s", i.amount, i.name);
+            String item_str = String.format(" - %dx %s", i.amount, i.get_name());
             lines[item_line_index] = Utils.write_string(lines[item_line_index], item_str, sidebar_start);
         }
 
@@ -257,7 +257,7 @@ public class World {
                 if (!this.opened_clue) { return false; }
                 if (this.clue_item.id == 0) { return false; } // can't pick up nothing
                 this.player.items.add(clue_item);
-                this.clue_item = new Item("- nothing -", 0, 0);
+                this.clue_item = new Item(0, 0, false);
 
                 found_clues.add(this.opened_clue_location);
             }
@@ -293,7 +293,7 @@ public class World {
                 Item item;
                 
                 if (found_clues.contains(here)) {
-                    item = new Item("- nothing -", 0, 0);
+                    item = new Item(0, 0, false);
                 } else {
                     item = get_item_at(nx, ny);
                 }
@@ -310,16 +310,27 @@ public class World {
         switch (itype) {
             case 0 -> { // note
                 if (0 <= item_hash && item_hash < 20) {
-                    Item note = new Item("Note that points somewhere", 1, System.currentTimeMillis());
+                    Item note = new Item(1, 1, false); 
                     return note;
                 } else if (20 < item_hash && item_hash <= 30) {
-                    Item note = new Item("Partial exit code", 1, System.currentTimeMillis());
-                    note.image = "The code is: \n[   4  2  8]"; // todo: randomly pick digits
-                } else {
-                    /* there is a <item> nearby, <distance> units away */
-                    // choose an item that hasn't been opened
-                    // if everything is opened, return a Nothing
+                    Item note = new Item(1, 1, false);
+                    note.text = String.format("The code is: \n[%d]", this.EXIT_CODE);
+                    return note;
+                } else if (found_clues.size() < clues.size()) {
+                    Item note = new Item(1, 1, false);
+                    
+                    while (true) { 
+                        int rand_clue_idx = (int)(Math.random() * (double)clues.size());
+                        if (found_clues.contains(clues.get(rand_clue_idx))) continue;
 
+                        Point c = clues.get(rand_clue_idx);
+                        note.compass_target = c;
+                        break;
+                    }
+
+                    return note;                    
+                } else {
+                    return new Item(0, 0, false);
                 }
             }
             case 1 -> { // encrypted message with varying ciphers
@@ -338,7 +349,32 @@ public class World {
                     note.text = Utils.b64_encode(Utils.bin_encode(Utils.hex_encode(note.text)));
                 }
             }
+            case 2 -> {
+                if (0 <= item_hash && item_hash < 15) {
+                    return new Item(2, 1, true);
+                } else if (15 <= item_hash && item_hash < 40) {
+                    return new Item(3, 1, true);
+                } else if (40 <= item_hash && item_hash < 60) {
+                    return new Item(4, 1, true);
+                } else if (60 <= item_hash && item_hash < 70) {
+                    return new Item(5, 1, true);
+                } else if (70 <= item_hash && item_hash < 72) {
+                    return new Item(9, 1, true);
+                } else if (72 <= item_hash && item_hash < 92) {
+                    return new Item(6, 1, true);
+                } else if (92 <= item_hash && item_hash < 97) {
+                    return new Item(7, 1, true);
+                } else {
+                    return new Item(0, 0, false);
+                }
+            }
+            case 3 -> {
+                Item note = new Item(8, 1, false);
+                note.compass_target = new Point((int)(Math.random() * (double)WORLD_WIDTH), (int)(Math.random() * (double)WORLD_HEIGHT));
+                return note;
+            }
         }
+        return new Item(0, 0, false);
     }
 
     private Item get_item_at(int x, int y) {
@@ -349,20 +385,7 @@ public class World {
 }
 
 /* types of clues */
-// 1. direct note (note item)
-//  - direction: arrow pointing to where another clue is
-    // Item - note, ID: <unique>
-//  - code is 123... for exit (requires keycard)    [10%]
-    // Item - note. ID: <unique> 
-//  - there is a yellow keycard nearby
-    // Item - note, ID: <unique>
-// 2. encrypted message: same variants as first type but encrypted 
-//  - base64
-//  - to binary
-//  - to hex
-//  - 1 + 3
-//  - 2 + 3, 
-//  - 1 + 2 + 3 
+
 // 3. utility item 
 //  - compass               [0-15]  15% points to some clue that's within 200 units of where it was found
     // Item - compass, ID: 1, data: fixed location, render: compass art to point to a location
@@ -379,7 +402,5 @@ public class World {
 //  - radar (for clues)     [92-97] 5%  scans nearby area for possible clues (not that reliable)
     // Item - radar, ID: 5, data: battery (0 - 1), action: use - ping for locations (shows up on item view)
 //  - nothing               [97-100]    
-// 4. map (around a fixed location but tells you where it is)
-    // Item - map, ID: <unique>, data: center point, render: area
 
 record Point(int x, int y) {}
