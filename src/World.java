@@ -13,7 +13,7 @@ public class World {
     private static final String RESET       = "\u001b[0m";
 
     private static final int VISIBILITY_RADIUS = 20;
-    private static final transient boolean COLLISIONS_ENABLED = true; 
+    private static final transient boolean COLLISIONS_ENABLED = false; // TODO: RESET!!!
     
     public final int WORLD_HEIGHT = 1001;    // should be odd
     public final int WORLD_WIDTH = WORLD_HEIGHT - 1;     // should be even
@@ -37,19 +37,22 @@ public class World {
         // worldgen
         MazeGenerator m = new MazeGenerator(WORLD_WIDTH, WORLD_HEIGHT);
         this.world = m.generate_maze();
+        System.out.println("maze is generated");
+        
         generate_clues();
-
-        EXIT_CODE = (int)(Math.random() * 10_000_000_000L);
-
+        
+        EXIT_CODE = (long)(Math.random() * 10_000_000_000L);
+        
         // generate exit door
         while (true) { 
             int random_position = (int)(Math.random() * WORLD_WIDTH);
-            if (world[1][random_position] == '.') {
+            if (world[1][random_position] == ',') {
                 world[0][random_position] = '^';
                 break;
             }
         }
-
+        System.out.println("door is generated");
+        
         player.x = WORLD_WIDTH / 2 + 1;
         player.y = WORLD_HEIGHT / 2 + 1;
 
@@ -107,7 +110,7 @@ public class World {
         // render buffer
         String[] lines = new String[height];
         String status_bar_template = "%-" + width + "s"; // align to left with spacing
-        lines[0] = String.format(status_bar_template, "Maze game v0.1.1 [11-09-2026]");
+        lines[0] = String.format(status_bar_template, "Maze game v0.1.1 [11-10-2026]");
         
         int sidebar_width = Math.min(40, width / 4);
         
@@ -182,6 +185,25 @@ public class World {
 
         /* gui elements (in the maze area) */
 
+        // opened clue
+
+        if (this.opened_clue) {
+            // todo: render clue item in a box
+            int item_width = 30;
+            int item_height = 15;
+            int item_start_char = (maze_width - item_width - 2) / 2;
+            int item_start_idx = (maze_height - item_height - 2) / 2;
+
+            String[] item_sprite = clue_item.render(this.player.x, this.player.y);
+            lines[item_start_idx - 1] = Utils.write_string(lines[item_start_idx - 1], "|" + "-".repeat(item_width) + "|", item_start_char);
+            int line_idx = 0;
+            for (String line : item_sprite) {
+                lines[item_start_idx + line_idx] = Utils.write_string(lines[item_start_idx + line_idx], "|" + line + "|", item_start_char);
+                line_idx += 1;
+            }
+            lines[item_start_idx + item_sprite.length] = Utils.write_string(lines[item_start_idx + item_sprite.length], "|" + "-".repeat(item_width) + "|", item_start_char);
+        }
+
         // objective (at the top)
         int objective_dialog_width = 29;
         String objective_dialog_covers = "-".repeat(objective_dialog_width);
@@ -201,6 +223,7 @@ public class World {
                 objective_dialog_topleft_x
             );
         }
+
 
         /* apply colours */
         for (int i = 0; i < lines.length; i++) {
@@ -231,25 +254,25 @@ public class World {
         switch (Inputs.get_keypress()) {
             case Keybinds.MOVE_UP -> {
                 int new_pos = Math.max(0, this.player.y - 1);
-                if (check_coll(this.player.x, new_pos) || !COLLISIONS_ENABLED) {
+                if (check_coll(this.player.x, new_pos) || !COLLISIONS_ENABLED && !this.opened_clue) {
                     this.player.y = new_pos;
                 }
             }
             case Keybinds.MOVE_LEFT -> {
                 int new_pos = Math.max(0, this.player.x - 1);
-                if (check_coll(new_pos, this.player.y) || !COLLISIONS_ENABLED) {
+                if (check_coll(new_pos, this.player.y) || !COLLISIONS_ENABLED && !this.opened_clue) {
                     this.player.x = new_pos;
                 }
             }
             case Keybinds.MOVE_DOWN -> {
                 int new_pos = Math.min(WORLD_HEIGHT - 1, this.player.y + 1);
-                if (check_coll(this.player.x, new_pos) || !COLLISIONS_ENABLED) {
+                if (check_coll(this.player.x, new_pos) || !COLLISIONS_ENABLED && !this.opened_clue) {
                     this.player.y = new_pos;
                 }
             }
             case Keybinds.MOVE_RIGHT -> {
                 int new_pos = Math.min(WORLD_WIDTH - 1, this.player.x + 1);
-                if (check_coll(new_pos, this.player.y) || !COLLISIONS_ENABLED) {
+                if (check_coll(new_pos, this.player.y) || !COLLISIONS_ENABLED && !this.opened_clue) {
                     this.player.x = new_pos;
                 }
             }
@@ -262,6 +285,7 @@ public class World {
                 found_clues.add(this.opened_clue_location);
             }
             case Keybinds.EXIT -> { return true; }
+            case Keybinds.ESCAPE -> { return this.opened_clue = false; }
             default -> { return false; }
         }
 
@@ -303,6 +327,10 @@ public class World {
                 return false; 
             }
             default ->  { return true; }
+            case '^' -> { // check for two things: blue keycard is used, and code is entered.
+
+                return false;
+            }
         }
     }
 
@@ -310,7 +338,15 @@ public class World {
         switch (itype) {
             case 0 -> { // note
                 if (0 <= item_hash && item_hash < 20) {
-                    Item note = new Item(1, 1, false); 
+                    Item note = new Item(1, 1, false);
+                    String[] texts = {
+                        "Now where could this exit\npossibly be?",
+                        "I wonder where\nI should go next...",
+                        "Try somewhere else.",
+                        "I don't know what\nyou're looking for.",
+                        "...zzz...",
+                    };
+                    note.text = texts[(int)(Math.random() * texts.length)];
                     return note;
                 } else if (20 < item_hash && item_hash <= 30) {
                     Item note = new Item(1, 1, false);
@@ -324,7 +360,9 @@ public class World {
                         if (found_clues.contains(clues.get(rand_clue_idx))) continue;
 
                         Point c = clues.get(rand_clue_idx);
+                        double dist = Math.hypot(this.player.x - c.x(), this.player.y - c.y());
                         note.compass_target = c;
+                        note.text = String.format("There is something located\n%.2fm away.", dist);
                         break;
                     }
 
@@ -404,3 +442,11 @@ public class World {
 //  - nothing               [97-100]    
 
 record Point(int x, int y) {}
+
+/* TODOS:
+1. render GUI for clues
+1.1. render GUI for items in inventory
+2. GUI for exit room
+3. win screen/cutscene
+4. optionally, sfx
+*/

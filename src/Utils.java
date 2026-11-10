@@ -1,11 +1,12 @@
+import java.util.ArrayList;
+
 public class Utils {
     // encode each line individually
     public static String b64_encode(String s) {
-        String[] encoded = new String[(int)(s.chars().filter(ch -> ch == '\n').count())];
-        int line_idx = 0;
+        if (s.isEmpty()) return "";
+        ArrayList<String> encoded = new ArrayList<>();
         for (String line : s.split("\n")) {
-            encoded[line_idx] = b64_encode_segment(line);
-            line_idx += 1;
+            encoded.add(b64_encode_segment(line));
         }
 
         return String.join("\n", encoded);
