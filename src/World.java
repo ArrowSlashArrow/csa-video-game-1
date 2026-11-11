@@ -67,18 +67,20 @@ public class World {
         int mx = WORLD_WIDTH / 2;   // midpoint
         int my = WORLD_HEIGHT / 2;
 
-        generate_ring(mx, my, c / 10.0, 2);
-        generate_ring(mx, my, c / 25.0, 8);
-        generate_ring(mx, my, c / 15.0, 9);
-        generate_ring(mx, my, c / 11.0, 10);
-        generate_ring(mx, my, c / 8.0, 12);
-        generate_ring(mx, my, c / 6.0, 14);
-        generate_ring(mx, my, c / 4.0, 17);
-        generate_ring(mx, my, c / 3.0, 20);
+        int debug_spawn_multiplier = 100;
+
+        generate_ring(mx, my, c / 10.0, 2 * debug_spawn_multiplier);
+        generate_ring(mx, my, c / 25.0, 8 * debug_spawn_multiplier);
+        generate_ring(mx, my, c / 15.0, 9 * debug_spawn_multiplier);
+        generate_ring(mx, my, c / 11.0, 10 * debug_spawn_multiplier);
+        generate_ring(mx, my, c / 8.0, 12 * debug_spawn_multiplier);
+        generate_ring(mx, my, c / 6.0, 14 * debug_spawn_multiplier);
+        generate_ring(mx, my, c / 4.0, 17 * debug_spawn_multiplier);
+        generate_ring(mx, my, c / 3.0, 20 * debug_spawn_multiplier);
     }
 
     private void generate_ring(int mx, int my, double radius, int c) {
-        double ring_width = 10.0;
+        double ring_width = 20.0;
         for (int i = 0; i < c; i++) {
             double angle = Math.random() * Math.TAU;
             double radius_jiggle = ring_width * (Math.random() - 0.5);
@@ -177,7 +179,7 @@ public class World {
 
         int item_line_index = 1;
         for (Item i : this.player.items) {
-            if (!(i != null) || i.amount > 0) continue;
+            if (i == null || i.amount <= 0) continue;
             item_line_index += 1;
             String item_str = String.format(" - %dx %s", i.amount, i.get_name());
             lines[item_line_index] = Utils.write_string(lines[item_line_index], item_str, sidebar_start);
@@ -195,13 +197,16 @@ public class World {
             int item_start_idx = (maze_height - item_height - 2) / 2;
 
             String[] item_sprite = clue_item.render(this.player.x, this.player.y);
-            lines[item_start_idx - 1] = Utils.write_string(lines[item_start_idx - 1], "|" + "-".repeat(item_width) + "|", item_start_char);
+            String top_line = "=" + Utils.center_string(clue_item.get_name(), item_width) + "=";
+            lines[item_start_idx - 1] = Utils.write_string(lines[item_start_idx - 1], top_line, item_start_char);
             int line_idx = 0;
             for (String line : item_sprite) {
                 lines[item_start_idx + line_idx] = Utils.write_string(lines[item_start_idx + line_idx], "|" + line + "|", item_start_char);
                 line_idx += 1;
             }
-            lines[item_start_idx + item_sprite.length] = Utils.write_string(lines[item_start_idx + item_sprite.length], "|" + "-".repeat(item_width) + "|", item_start_char);
+
+            String bottom_line = "=" + Utils.center_string("Press E to pick up", item_width) + "=";
+            lines[item_start_idx + item_sprite.length] = Utils.write_string(lines[item_start_idx + item_sprite.length], bottom_line, item_start_char);
         }
 
         // objective (at the top)
@@ -254,25 +259,25 @@ public class World {
         switch (Inputs.get_keypress()) {
             case Keybinds.MOVE_UP -> {
                 int new_pos = Math.max(0, this.player.y - 1);
-                if (check_coll(this.player.x, new_pos) || !COLLISIONS_ENABLED && !this.opened_clue) {
+                if ((check_coll(this.player.x, new_pos) && !this.opened_clue) || !COLLISIONS_ENABLED) {
                     this.player.y = new_pos;
                 }
             }
             case Keybinds.MOVE_LEFT -> {
                 int new_pos = Math.max(0, this.player.x - 1);
-                if (check_coll(new_pos, this.player.y) || !COLLISIONS_ENABLED && !this.opened_clue) {
+                if ((check_coll(new_pos, this.player.y) && !this.opened_clue) || !COLLISIONS_ENABLED) {
                     this.player.x = new_pos;
                 }
             }
             case Keybinds.MOVE_DOWN -> {
                 int new_pos = Math.min(WORLD_HEIGHT - 1, this.player.y + 1);
-                if (check_coll(this.player.x, new_pos) || !COLLISIONS_ENABLED && !this.opened_clue) {
+                if ((check_coll(this.player.x, new_pos) && !this.opened_clue) || !COLLISIONS_ENABLED) {
                     this.player.y = new_pos;
                 }
             }
             case Keybinds.MOVE_RIGHT -> {
                 int new_pos = Math.min(WORLD_WIDTH - 1, this.player.x + 1);
-                if (check_coll(new_pos, this.player.y) || !COLLISIONS_ENABLED && !this.opened_clue) {
+                if ((check_coll(new_pos, this.player.y) && !this.opened_clue) || !COLLISIONS_ENABLED) {
                     this.player.x = new_pos;
                 }
             }
@@ -282,7 +287,7 @@ public class World {
                 this.player.items.add(clue_item);
                 this.clue_item = new Item(0, 0, false);
 
-                found_clues.add(this.opened_clue_location);
+                found_clues.add(new Point(this.opened_clue_location.x(), this.opened_clue_location.y()));
             }
             case Keybinds.EXIT -> { return true; }
             case Keybinds.ESCAPE -> { return this.opened_clue = false; }
@@ -313,16 +318,25 @@ public class World {
             case '.' -> { return true; }
             case '#' -> { return false; }
             case '%' -> {
-                Point here = new Point(nx, ny);
-                Item item;
+                // update progression level
                 
-                if (found_clues.contains(here)) {
+                boolean found_clue = false;
+                for (Point p : found_clues) {
+                    if (p.x() == nx && p.y() == ny) { 
+                        found_clue = true;
+                        break;
+                    }
+                }
+                
+                Item item;
+                if (found_clue) {
                     item = new Item(0, 0, false);
                 } else {
                     item = get_item_at(nx, ny);
                 }
 
                 opened_clue = true;
+                this.opened_clue_location = new Point(nx, ny);
                 clue_item = item;
                 return false; 
             }
@@ -368,7 +382,9 @@ public class World {
 
                     return note;                    
                 } else {
-                    return new Item(0, 0, false);
+                    Item note = new Item(0, 0, false);
+                    note.text = "debug message";
+                    return note;
                 }
             }
             case 1 -> { // encrypted message with varying ciphers
@@ -389,19 +405,19 @@ public class World {
             }
             case 2 -> {
                 if (0 <= item_hash && item_hash < 15) {
-                    return new Item(2, 1, true);
+                    return new Item(1, 2, true);
                 } else if (15 <= item_hash && item_hash < 40) {
-                    return new Item(3, 1, true);
+                    return new Item(1, 3, true);
                 } else if (40 <= item_hash && item_hash < 60) {
-                    return new Item(4, 1, true);
+                    return new Item(1, 4, true);
                 } else if (60 <= item_hash && item_hash < 70) {
-                    return new Item(5, 1, true);
+                    return new Item(1, 5, true);
                 } else if (70 <= item_hash && item_hash < 72) {
-                    return new Item(9, 1, true);
+                    return new Item(1, 9, true);
                 } else if (72 <= item_hash && item_hash < 92) {
-                    return new Item(6, 1, true);
+                    return new Item(1, 6, true);
                 } else if (92 <= item_hash && item_hash < 97) {
-                    return new Item(7, 1, true);
+                    return new Item(1, 7, true);
                 } else {
                     return new Item(0, 0, false);
                 }
@@ -446,7 +462,9 @@ record Point(int x, int y) {}
 /* TODOS:
 1. render GUI for clues
 1.1. render GUI for items in inventory
-2. GUI for exit room
+1.2. ability to use items
+2. gui for exit door
 3. win screen/cutscene
 4. optionally, sfx
+5. progressoin
 */
