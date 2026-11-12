@@ -1,4 +1,4 @@
-cd src;
+cd $PSScriptRoot/src;
 try {
     rm  *.class # remove old class files (which would still run when the compile fails)
     $libraries = "../lib/jline-4.4.3.jar;." # declare libraries

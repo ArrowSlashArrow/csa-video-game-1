@@ -5,6 +5,10 @@ public enum Keybinds {
     MOVE_RIGHT,
     EXIT,
     PICK_UP,
+    USE,
+    ITEM_DOWN,
+    ITEM_UP,
+    COPY_TEXT,
     ESCAPE,
     UNKNOWN
     ;
@@ -17,7 +21,11 @@ public enum Keybinds {
             case 'd' -> { return Keybinds.MOVE_RIGHT; }
             case 'q' -> { return Keybinds.EXIT; }
             case 'e' -> { return Keybinds.PICK_UP; }
-            case 27 -> { return Keybinds.ESCAPE; }
+            case 'f' -> { return Keybinds.USE; }
+            case 'z' -> { return Keybinds.ITEM_UP; }
+            case 'x' -> { return Keybinds.ITEM_DOWN; }
+            case 'c' -> { return Keybinds.COPY_TEXT; }
+            case 27 -> { return Keybinds.ESCAPE; } // esc key
             default -> { return Keybinds.UNKNOWN; }
         }
     }

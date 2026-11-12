@@ -1,143 +1,15 @@
 // do you like ascii art?
 
 public class Item {
-    public int amount;
     public int id; // stackable items have the same id; unstackable items do not
     public boolean stackable;
     public String text = "";
     public Point compass_target = new Point(0, 0);
+    public double flashlight_battery = 100.0;
 
-    public Item(int a, int i, boolean s) {
-        this.amount = a;
+    public Item(int i, boolean s) {
         this.id = i;
         this.stackable = s;
-    }
-
-    // return as 30x15
-    public String[] render(int cx, int cy) {
-
-        switch (this.id) {
-            case 0 -> { /* nothing/scrapes */
-                return to_lines("""
-                  . ,      _ .   ,     .   _ .
-                    ^      ,  .     *    /   .
-                ;  `    '        .    ,   _  .
-                .- _  &   -  .    *   -      .
-                    :                    .x  .
-                    ^      ,  .     *        .
-                        .              .     .
-                x                          xx.
-                x       ;     '     ^        .
-                ....x.     . ?            ..x.
-                xxxx                    >   x.
-                x                          xx.
-                xx  ^      ,  .     *       x.
-                x                "          xx
-                ..    ----   __          ....x
-                """);   
-            }
-            case 1 -> { /* note - render text split at lines */
-                String[] base = to_lines("""
-                 _,,,..>***^^^^^^^^***<..,,,_ 
-                ;%                          \\, 
-                /                            |
-                ]                            [
-                [                            ]
-                ]                            [
-                [                            ]
-                ]                            [
-                [                            ]
-                ]                            [
-                [                            ]
-                ]                            ^
-                [                            ]
-                \\.                          &^
-                 ^&+++=>***^^-^^^-^***<=+++=* 
-                """);
-
-                String[] lines = this.text.split("\n");
-                int index = (15 - lines.length) / 2;
-                for (String line : lines) {
-                    // center string
-                    base[index] = Utils.write_string(base[index], line, Math.max(2, 15 - (line.length() / 2)));
-                    if (index >= base.length) { break; }
-                    index += 1;
-                }
-
-                return base;
-            }
-            case 2 -> { // compass
-                int dx = cx - this.compass_target.x();
-                int dy = cy - this.compass_target.y();
-                double angle_to_target = Math.atan2(dy, dx);
-
-                return compass_phase(angle_to_target);
-            }
-            case 3 -> { // marker
-                return to_lines(
-"""
-                             .
-                             .
-       ._           ,_       .
-     :[##$:      ,&##P>      .
-       `!#$'.  ,i##$^        .
-         `&#i-i##$^          .
-          >#####<            .
-        u*#:$-&##j.          .
-      u/#&`    `$##j.        .
-    *5##^        `$##k:      .
-     `^            `*'       .
-                             .
-                             .
-                             .
-""");
-            }
-            case 4 -> { // grenade
-                return to_lines(
-"""
-                             .
-       -=#########           .
-        7##########,--:\\    . 
-          ####  ####    |    .
-          ###########    ]   .
-          |%###   \\###  ;   . 
-          |%##|    "-##/     .
-      _,=..###&*=+_.  ##     .
-    ;`'*########L=...':,#    .
-   ::=###########Up=...:     .
-   :,*&##########%*=...o:    .
-    ~7...###%#/%%**=.k~`     .
-     `:vK.U27!(*2/....       .
-         ```^::^```          .
-                             .
-""");
-            }
-            case 5 -> { // yellow keycard
-                return to_lines(
-"""
-no item sprite yet                  
-""");
-            }
-        }
-
-        // item that has no image
-        return new String[] {
-            " ".repeat(30),
-            " ".repeat(30),
-            " ".repeat(30),
-            " ".repeat(30),
-            " ".repeat(30), // 5
-            " ".repeat(30),
-            " ".repeat(30),
-            " ".repeat(30),
-            " ".repeat(30),
-            " ".repeat(30), // 10
-            " ".repeat(30),
-            " ".repeat(30),
-            " ".repeat(30),
-            " ".repeat(30),
-            " ".repeat(30), // 15
-        };
     }
 
     public String get_name() {
@@ -157,10 +29,10 @@ no item sprite yet
         return "mystery item";
     }
 
-    private String[] to_lines(String i) { return i.split("\n"); }
+    public static String[] to_lines(String i) { return i.split("\n"); }
 
-    private String[] compass_phase(double angle) {
-        double degrees = (angle * 180.0 / Math.PI) % 360.0;
+    public String[] compass_phase(double angle) {
+        double degrees = (360.0 + (angle * 180.0 / Math.PI)) % 360.0;
         if ((0.0 <= degrees && degrees < 15.0) || (345.0 <= degrees && degrees < 360.0)) {
             return to_lines(
             """
@@ -391,6 +263,7 @@ no item sprite yet
 :                            |
 """);
         }
+        System.out.println("did not get a valid compass phase for " + angle);
         return null; // unreachable
     }
 }
@@ -412,7 +285,5 @@ no item sprite yet
 |                            |
 |                            |
 |                            |
-
-
 
 */

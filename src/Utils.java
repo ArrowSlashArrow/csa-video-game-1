@@ -1,3 +1,4 @@
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
 public class Utils {
@@ -72,13 +73,14 @@ public class Utils {
 
     public static String hex_encode(String original) {
         String out = "";
-        int index = 0;
-        for (int ch : original.chars().toArray()) {
-            index += 1;
+        byte[] bytes = original.getBytes(StandardCharsets.UTF_8);
+        for (int i = 0; i < bytes.length; i++) {
+            int ch = bytes[i] & 0xff;
             int upper = ch >> 4;
             int lower = ch & 0x0f;
-            out += HEX_CHARS.charAt(upper) + HEX_CHARS.charAt(lower);
-            if (original.length() != index) { out += " "; }
+            out += HEX_CHARS.charAt(upper); 
+            out += HEX_CHARS.charAt(lower);
+            if (bytes.length != i - 1) { out += " "; }
         }
 
         return out;
@@ -88,7 +90,7 @@ public class Utils {
         String[] out = new String[(int)(original.chars().count())];
         int index = 0;
         for (int ch : original.chars().toArray()) {
-            out[index] = Integer.toBinaryString(ch);
+            out[index] = String.format("%8s", Integer.toBinaryString(ch)).replace(' ', '0');
             index += 1;
         }
 
