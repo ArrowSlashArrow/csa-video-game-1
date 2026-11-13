@@ -20,11 +20,13 @@ class GameRunner {
         System.out.println("Loading maze...");
         w.render();
         while (true) {
-            if (w.get_input()) {
+            if (w.allowed_to_leave && w.get_input()) {
                 break;
             }
 
-            w.render();
+            if (!w.won) {
+                w.render();
+            }
         }
     }
 }

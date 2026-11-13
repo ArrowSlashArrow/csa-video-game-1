@@ -14,10 +14,12 @@ public class World {
     private static final String CLUE        = "\u001b[38;5;9m";
     private static final String FAINT_CLUE  = "\u001b[38;5;52m";
     private static final String DOOR        = "\u001b[38;5;39m";
+    private static final String DARK_DOOR   = "\u001b[38;5;17m";
+    private static final String YELLOW      = "\u001b[38;5;11m";
     private static final String RESET       = "\u001b[0m";
 
-    private static final int VISIBILITY_RADIUS = 20;
-    private static final transient boolean COLLISIONS_ENABLED = false; // TODO: RESET!!!
+    private static int VISIBILITY_RADIUS = 20;
+    private static final transient boolean COLLISIONS_ENABLED = true;
     
     public final int WORLD_HEIGHT = 1001;    // should be odd
     public final int WORLD_WIDTH = WORLD_HEIGHT - 1;     // should be even
@@ -35,8 +37,15 @@ public class World {
     private Point opened_clue_location;
     private Item clue_item;
 
+    // ending door parameters
     private long EXIT_CODE;
+    private long entered_exit_code;
     private Point exit_door_location;
+    private boolean used_blue_keycard = false;
+    private boolean entered_code = false;
+    private boolean opened_exit_door = false;
+    public boolean won = false;
+    public boolean allowed_to_leave = true;
 
     // inventory 
     private int selected_item_idx = -1; // -1: not selecting anything
@@ -48,6 +57,7 @@ public class World {
         System.out.println("maze is generated");
         
         generate_clues();
+        System.out.println("clues r generated");
         
         EXIT_CODE = (long)(Math.random() * 10_000_000_000L);
         
@@ -76,7 +86,7 @@ public class World {
         int mx = WORLD_WIDTH / 2;   // midpoint
         int my = WORLD_HEIGHT / 2;
 
-        int debug_spawn_multiplier = 100;
+        int debug_spawn_multiplier = 1;
 
         generate_ring(mx, my, c / 10.0, 2 * debug_spawn_multiplier);
         generate_ring(mx, my, c / 25.0, 8 * debug_spawn_multiplier);
@@ -167,6 +177,7 @@ public class World {
                         case '#' -> { ch = ':'; }
                         case ',' -> { ch = ' '; }
                         case '%' -> { ch = '!'; }
+                        case '^' -> { ch = '*'; }
                         default -> {}
                     }
                 }
@@ -195,10 +206,15 @@ public class World {
                 // render item at the bottom right of the screen
                 int item_start_y = height - 16;
                 int item_start_x = width - 31;
+                lines[item_start_y - 1] = Utils.write_string(lines[item_start_y - 1], "Press F to use", item_start_x);
                 
                 String[] item_render = render(i, this.player.x, this.player.y);
                 for (int n = item_start_y; n < height - 1; n++) {
-                    lines[n] = Utils.write_string(lines[n], item_render[n - item_start_y], item_start_x);
+                    lines[n] = Utils.write_string(
+                        lines[n], 
+                        item_render[n - item_start_y], 
+                        item_start_x
+                    );
                 }
             }
             String item_str = String.format(template, i.get_name());
@@ -249,7 +265,6 @@ public class World {
             );
         }
 
-
         /* apply colours */
         for (int i = 0; i < lines.length; i++) {
             String line = "";
@@ -269,8 +284,7 @@ public class World {
             case 0 -> { return "Locate a clue (%)."; }
             case 1 -> { return "Find a yellow keycard"; }   // if the player does not have a yellow keycard
             case 2 -> { return "Find a blue keycard."; }    // if the player does not have a blue keycard
-            case 3 -> { return "Locate an exit clue."; }    // if the player has a blue keycard
-            case 4 -> { return "Locate the exit."; }        // if the player has the code
+            case 3 -> { return "Locate the exit."; }        // if the player has a blue keycard
             default -> { return ""; }
         }
     }
@@ -302,10 +316,15 @@ public class World {
                 }
             }
             case Keybinds.PICK_UP -> {
-                if (!this.opened_clue) { return false; }
-                if (this.clue_item.id == 0) { return false; } // can't pick up nothing
+                if (!this.opened_clue || this.clue_item.id == 0 || this.opened_exit_door) { return false; }
                 this.player.items.add(clue_item);
-                this.clue_item = new Item(0, false);
+                if (this.clue_item.id == 5 && this.player.level == 1) { // progression level
+                    this.player.level = 2;
+                }
+                if (this.clue_item.id == 9 && this.player.level < 3) { // progression level
+                    this.player.level = 3;
+                }
+                this.clue_item = new Item(0);
 
                 found_clues.add(new Point(this.opened_clue_location.x(), this.opened_clue_location.y()));
             }
@@ -320,8 +339,11 @@ public class World {
                 }
             }
             case Keybinds.USE -> {
-                /* todo: implement use_item */
-                
+                if (selected_item_idx == -1) { return false; }
+                if (use_item(this.player.items.get(this.selected_item_idx))) {
+                    this.player.items.remove(selected_item_idx);
+                    this.selected_item_idx -= 1;
+                }
             }
             case Keybinds.COPY_TEXT -> {
                 String text;
@@ -336,11 +358,115 @@ public class World {
                 Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
                 clipboard.setContents(stringSelection, null);
             }
+            case Keybinds.N1 -> {
+                if (!(opened_exit_door && used_blue_keycard) || entered_exit_code >= 1_000_000_000L) { return false; }
+                entered_exit_code *= 10;
+                entered_exit_code += 1;
+            }
+            case Keybinds.N2 -> {
+                if (!(opened_exit_door && used_blue_keycard) || entered_exit_code >= 1_000_000_000L) { return false; }
+                entered_exit_code *= 10;
+                entered_exit_code += 2;
+            }
+            case Keybinds.N3 -> {
+                if (!(opened_exit_door && used_blue_keycard) || entered_exit_code >= 1_000_000_000L) { return false; }
+                entered_exit_code *= 10;
+                entered_exit_code += 3;
+            }
+            case Keybinds.N4 -> {
+                if (!(opened_exit_door && used_blue_keycard) || entered_exit_code >= 1_000_000_000L) { return false; }
+                entered_exit_code *= 10;
+                entered_exit_code += 4;
+            }
+            case Keybinds.N5 -> {
+                if (!(opened_exit_door && used_blue_keycard) || entered_exit_code >= 1_000_000_000L) { return false; }
+                entered_exit_code *= 10;
+                entered_exit_code += 5;
+            }
+            case Keybinds.N6 -> {
+                if (!(opened_exit_door && used_blue_keycard) || entered_exit_code >= 1_000_000_000L) { return false; }
+                entered_exit_code *= 10;
+                entered_exit_code += 6;
+            }
+            case Keybinds.N7 -> {
+                if (!(opened_exit_door && used_blue_keycard) || entered_exit_code >= 1_000_000_000L) { return false; }
+                entered_exit_code *= 10;
+                entered_exit_code += 7;
+            }
+            case Keybinds.N8 -> {
+                if (!(opened_exit_door && used_blue_keycard) || entered_exit_code >= 1_000_000_000L) { return false; }
+                entered_exit_code *= 10;
+                entered_exit_code += 8;
+            }
+            case Keybinds.N9 -> {
+                if (!(opened_exit_door && used_blue_keycard) || entered_exit_code >= 1_000_000_000L) { return false; }
+                entered_exit_code *= 10;
+                entered_exit_code += 9;
+            }
+            case Keybinds.N0 -> {
+                if (!(opened_exit_door && used_blue_keycard) || entered_exit_code >= 1_000_000_000L) { return false; }
+                entered_exit_code *= 10;
+                entered_exit_code += 0;
+            }
+            case Keybinds.ENTER -> {
+                if (!(opened_exit_door && used_blue_keycard)) { return false; }
+                if (entered_exit_code == EXIT_CODE) {
+                    win();
+                } else {
+                    this.player.items.add(new Item(13));
+                    this.entered_exit_code = 0;
+                }
+            }
             case Keybinds.EXIT -> { return true; }
-            case Keybinds.ESCAPE -> { return this.opened_clue = false; }
+            case Keybinds.ESCAPE -> { this.opened_clue = false; this.opened_exit_door = false; }
             default -> { return false; }
         }
 
+        return false;
+    }
+
+    // returns true if the item was used, false if not
+    public boolean use_item(Item item) {
+         switch (item.id) {
+            case 0 -> {} // nothing
+            case 1 -> {} // note
+            case 2 -> {} // compass
+            case 3 -> { // marker
+                world[this.player.y][this.player.x] = 'X';
+                return true;
+            }
+            case 4 -> { // grenade
+                int grenade_radius = 5;
+
+                for (int x = this.player.x - grenade_radius * 2; x < this.player.x + grenade_radius * 2; x++) {
+                    for (int y = this.player.y - grenade_radius; y < this.player.y + grenade_radius; y++) {
+                        if (Math.hypot((this.player.x - x) / 2, (this.player.y - y)) < grenade_radius) {
+                            this.world[y][x] = ',';
+                        }
+                    }
+                }
+                return true;
+            }
+            case 5 -> { // yellow keycard
+                // if you close and reopen the clue after using the yellow keycard it will re-lock.
+                if (!this.opened_clue || this.clue_item.id != 10) { return false; }
+                this.clue_item = new Item(9);
+                return true;
+            }
+            case 6 -> { // flashlight
+                if (VISIBILITY_RADIUS == 30) VISIBILITY_RADIUS = 20;
+                else  VISIBILITY_RADIUS = 30;
+            }
+            case 7 -> {} // radar
+            case 8 -> {} // map
+            case 9 -> { // blue keycard
+                if (!this.opened_exit_door || this.clue_item.id != 11) { return false; }
+                this.clue_item = new Item(12);
+                this.used_blue_keycard = true;
+                return true;
+            }
+            case 10 -> {} // locked box (blue keycard)
+        }
         return false;
     }
 
@@ -353,6 +479,8 @@ public class World {
             case '%' -> { return CLUE; }
             case '!' -> { return FAINT_CLUE; }
             case '^' -> { return DOOR; }
+            case '*' -> { return DARK_DOOR; }
+            case 'X' -> { return YELLOW; }
             default ->  { return RESET; }
         }
     }
@@ -366,6 +494,9 @@ public class World {
             case '#' -> { return false; }
             case '%' -> {
                 // update progression level
+                if (this.player.level == 0) {
+                    this.player.level = 1;
+                }
                 
                 boolean found_clue = false;
                 for (Point p : found_clues) {
@@ -377,7 +508,7 @@ public class World {
                 
                 Item item;
                 if (found_clue) {
-                    item = new Item(0, false);
+                    item = new Item(0);
                 } else {
                     item = get_item_at(nx, ny);
                 }
@@ -388,8 +519,18 @@ public class World {
                 return false; 
             }
             default ->  { return true; }
-            case '^' -> { // check for two things: blue keycard is used, and code is entered.
+            case '^' -> {
+                opened_exit_door = true;
+                if (used_blue_keycard && entered_code) {
+                    win();
+                }
 
+                opened_clue = true;
+                if (used_blue_keycard) {
+                    clue_item = new Item(12);
+                } else {
+                    clue_item = new Item(11);
+                }
                 return false;
             }
         }
@@ -399,7 +540,7 @@ public class World {
         switch (itype) {
             case 0 -> { // note
                 if (0 <= item_hash && item_hash < 20) {
-                    Item note = new Item(1, false);
+                    Item note = new Item(1);
                     String[] texts = {
                         "Now where could this exit\npossibly be?",
                         "I wonder where\nI should go next...",
@@ -409,12 +550,12 @@ public class World {
                     };
                     note.text = texts[(int)(Math.random() * texts.length)];
                     return note;
-                } else if (20 < item_hash && item_hash <= 30) {
-                    Item note = new Item(1, false);
-                    note.text = String.format("The code is: \n[%d]", this.EXIT_CODE);
+                } else if (20 < item_hash && item_hash <= 40) {
+                    Item note = new Item(1);
+                    note.text = String.format("The code is: \n[%-10s]", Long.toString(this.EXIT_CODE).replace(" ", "0"));
                     return note;
                 } else if (found_clues.size() < clues.size()) {
-                    Item note = new Item(1, false);
+                    Item note = new Item(1);
                     
                     while (true) { 
                         int rand_clue_idx = (int)(Math.random() * (double)clues.size());
@@ -423,13 +564,13 @@ public class World {
                         Point c = clues.get(rand_clue_idx);
                         double dist = Math.hypot(this.player.x - c.x(), this.player.y - c.y());
                         note.compass_target = c;
-                        note.text = String.format("There is something located\n%.2fm away.", dist);
+                        note.text = String.format("There is a %s\nlocated %.2fm away.", get_item_at(c.x(), c.y()).get_name(), dist);
                         break;
                     }
 
                     return note;                    
                 } else {
-                    Item note = new Item(0, false);
+                    Item note = new Item(0);
                     return note;
                 }
             }
@@ -471,39 +612,38 @@ public class World {
                 return note;
             }
             case 2 -> {
-                return new Item(7, true);
-                // if (0 <= item_hash && item_hash < 15) {
-                //     Item item = new Item(2, true); // compass
-                //     if (Math.random() < 0.05) {
-                //         item.compass_target = exit_door_location;
-                //     } else {
-                //         int clue_idx = (int)(Math.random() * clues.size());
-                //         item.compass_target = this.clues.get(clue_idx);
-                //     }
-                //     return item;
-                // } else if (15 <= item_hash && item_hash < 40) {
-                //     return new Item(3, true); 
-                // } else if (40 <= item_hash && item_hash < 60) {
-                //     return new Item(4, true);
-                // } else if (60 <= item_hash && item_hash < 70) {
-                //     return new Item(5, true);
-                // } else if (70 <= item_hash && item_hash < 72) {
-                //     return new Item(9, true);
-                // } else if (72 <= item_hash && item_hash < 92) {
-                //     return new Item(6, true);
-                // } else if (92 <= item_hash && item_hash < 97) {
-                //     return new Item(7, true);
-                // } else {
-                //     return new Item(0, false);
-                // }
+                if (0 <= item_hash && item_hash < 15) {
+                    Item item = new Item(2); // compass
+                    if (Math.random() < 0.05) {
+                        item.compass_target = exit_door_location;
+                    } else {
+                        int clue_idx = (int)(Math.random() * clues.size());
+                        item.compass_target = this.clues.get(clue_idx);
+                    }
+                    return item;
+                } else if (15 <= item_hash && item_hash < 40) {
+                    return new Item(3); 
+                } else if (40 <= item_hash && item_hash < 60) {
+                    return new Item(4);
+                } else if (60 <= item_hash && item_hash < 70) {
+                    return new Item(5);
+                } else if (70 <= item_hash && item_hash < 75) {
+                    return new Item(10); // return a blue safe
+                } else if (75 <= item_hash && item_hash < 95) {
+                    return new Item(6);
+                } else if (95 <= item_hash && item_hash < 100) {
+                    return new Item(7);
+                } else {
+                    return new Item(0);
+                }
             }
             case 3 -> {
-                Item note = new Item(8, false);
+                Item note = new Item(8);
                 note.compass_target = new Point((int)(Math.random() * (double)WORLD_WIDTH), (int)(Math.random() * (double)WORLD_HEIGHT));
                 return note;
             }
         }
-        return new Item(0, false);
+        return new Item(0);
     }
 
     private Item get_item_at(int x, int y) {
@@ -512,10 +652,41 @@ public class World {
         return choose_item(Utils.picker(loc_hash, 4), item_hash);
     }
 
+    private void win() {
+        try {
+            won = true;
+            allowed_to_leave = false;
+            System.out.print("\u001b[H\u001b[0m\u001b[2J");
+            Thread.sleep(1000);
+            // ellipsis
+            for (int i = 0; i < 3; i++) {
+                Thread.sleep(400);
+                System.out.print(".");
+                System.out.flush();
+            }
+            System.out.println("");
+            System.out.println("Congratulations.");
+            Thread.sleep(4000);
+            System.out.println("You escaped the maze.");
+            Thread.sleep(4000);
+            System.out.println("Did you forget anything in there?");
+            Thread.sleep(4000);
+            System.out.println("Bit too late to get it out now...");
+            Thread.sleep(4000);
+            System.out.println("Thanks for playing.");
+            Thread.sleep(4000);
+            System.out.println("Press Q to win.");
+            allowed_to_leave = true; // goodbye :)
+            Thread.sleep(4000);
+        } catch (InterruptedException e) {
+            /* */
+        }
+    }
+
      // return as 30x15
     public String[] render(Item i, int cx, int cy) {
         switch (i.id) {
-            case 0 -> { /* nothing/scrapes */
+            case 0 -> { /* nothing/scraps */
                 return Item.to_lines("""
                   . ,      _ .   ,     .   _ .
                     ^      ,  .     *    /   .
@@ -557,7 +728,13 @@ public class World {
                 int index = (15 - lines.length) / 2;
                 for (String line : lines) {
                     // center string
-                    base[index] = Utils.write_string(base[index], line, Math.max(2, 15 - (line.length() / 2)));
+                    String truncated;
+                    if (line.length() > 26) {
+                        truncated = line.substring(0, 23) + "...";
+                    } else {
+                        truncated = line;
+                    }
+                    base[index] = Utils.write_string(base[index], truncated, Math.max(2, 15 - (line.length() / 2)));
                     if (index >= base.length) { break; }
                     index += 1;
                 }
@@ -585,6 +762,7 @@ public class World {
       u/#&`    `$##j.        .
     *5##^        `$##k:      .
      `^            `*'       .
+                             .
                              .
                              .
                              .
@@ -664,10 +842,10 @@ public class World {
 %                          $ .
 &                          $ .
  $                        $  .
- "&                      ,~  .
-  ^$                    /^   .
-   ^$,                ,%"    .
-     ^%%*,        .*$@^      .
+ "                       ,~  .
+  ^                     /^   .
+   ?                  ,%"    .
+   '`^%%*,        .*$@^      .
          `%$$$$$$&'          .
 """);
                 // render a 50x50 circle around the player
@@ -680,9 +858,9 @@ public class World {
                         }
                         
                         int world_x = x * 2 + cx - 25;
-                        int world_y = y * 4 + cy - 50;
+                        int world_y = y * 4 + cy - 25;
 
-                        if (world_x <= 0 || world_y <= 0) { continue; }
+                        if (world_x < 0 || world_y < 0 || world_x >= WORLD_WIDTH - 1 || world_y >= WORLD_HEIGHT - 3) { continue; }
                         // check in a 2x2 area for stuff
                         char thing = ' ';
                         if (
@@ -707,10 +885,34 @@ public class World {
 
                 return base;
             }
-            case 8 -> { /* todo: render area around map, use compass_target */
+            case 8 -> {
+                String[] base = new String[] {
+                    " ".repeat(30),
+                    " ".repeat(30),
+                    " ".repeat(30),
+                    " ".repeat(30),
+                    " ".repeat(30), // 5
+                    " ".repeat(30),
+                    " ".repeat(30),
+                    " ".repeat(30),
+                    " ".repeat(30),
+                    " ".repeat(30), // 10
+                    " ".repeat(30),
+                    " ".repeat(30),
+                    " ".repeat(30),
+                    " ".repeat(30),
+                    " ".repeat(30), // 15
+                };
 
+                for (int y = -7; y <= 7; y++) {
+                    for (int x = -14; x <= 15; x++) {
+                        base[y + 7] = base[y + 7].substring(0, x + 14) + world[y + i.compass_target.y()][x + i.compass_target.x()] + base[y + 7].substring(x + 15);
+                    }
+                }
+
+                return base;
             }
-            case 9 -> {
+            case 9 -> { // blue keycard
                 return Item.to_lines(
 """
                              .
@@ -731,8 +933,80 @@ public class World {
                              .
 """);
             }
+            /* internal items, used for screens */
+            case 10 -> { // blue keycard (not unlocked)
+                return Item.to_lines("""
+                             .
+                             .
+                             .
+                             .
+                             .
+                             .
+                             .
+  [ Requires yellow keycard ].
+                             .
+                             .
+                             .
+                             .
+                             .
+                             .
+                             .""");
+            }
+            case 11 -> { // exit door (keycard)
+return Item.to_lines("""
+                             .
+                             .
+                             .
+                             .
+                             .
+                             .
+                             .
+  [ Requires blue keycard ]  .
+                             .
+                             .
+                             .
+                             .
+                             .
+                             .
+                             .""");
+            }
+            case 12 -> { // exit door (code)
+                return Item.to_lines(String.format("""
+                             .
+                             .
+                             .
+                             .
+                             .
+                             .
+                             .
+  [ Code : %-10s     ]  .
+                             .
+                             .
+                             .
+                             .
+                             .
+                             .
+                             .""", this.entered_exit_code)); 
+            }
+                        case 13 -> { // failure item
+                    return Item.to_lines("""
+                             .
+                             .
+                             .
+                             .
+                             .
+                             .
+                             .
+          WRONG CODE!!!      .
+                             .
+                             .
+                             .
+                             .
+                             .
+                             .
+                             .""");
+            }           
         }
-
         // item that has no image
         return new String[] {
             " ".repeat(30),
@@ -754,32 +1028,4 @@ public class World {
     }
 }
 
-/* types of clues */
-
-// 3. utility item 
-//  - compass               [0-15]  15% points to some clue that's within 200 units of where it was found
-    // Item - compass, ID: 1, data: fixed location, render: compass art to point to a location
-//  - dead-end marker       [15-40] 25% visual marker for the player
-    // Item - marker, ID: 2, data: none, action: use - place on ground at player
-//  - grenade               [40-60] 20% blows a hole in the wall
-    // Item - grenade, ID: 3, data: none, action: use - detonate at current location
-//  - yellow keycard        [60-70] 10% unlocks some more clues
-    // Item - yel_key, ID: <unique>, data: none, action: use - to unlock key
-//  - blue keycard          [70-72] 2%  unlocks exit        
-    // same as above
-//  - flashlight            [72-92] 20% illuminates more stuff
-    // Item - fllight, ID: 4, data: battery (0 - 1), action: use - to illuminate thing
-//  - radar (for clues)     [92-97] 5%  scans nearby area for possible clues (not that reliable)
-    // Item - radar, ID: 5, data: battery (0 - 1), action: use - ping for locations (shows up on item view)
-//  - nothing               [97-100]    
-
 record Point(int x, int y) {}
-
-/* TODOS:
-1.1. render GUI for items in inventory
-1.2. ability to use items
-2. gui for exit door
-3. win screen/cutscene
-4. optionally, sfx
-5. progressoin (levels for player after he does things)
-*/

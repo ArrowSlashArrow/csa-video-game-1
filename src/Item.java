@@ -2,21 +2,18 @@
 
 public class Item {
     public int id; // stackable items have the same id; unstackable items do not
-    public boolean stackable;
     public String text = "";
     public Point compass_target = new Point(0, 0);
     public double flashlight_battery = 100.0;
 
-    public Item(int i, boolean s) {
+    public Item(int i) {
         this.id = i;
-        this.stackable = s;
     }
 
     public String get_name() {
         switch (this.id) {
             case 0 -> { return "Nothing"; }
             case 1 -> { return "Note"; }
-            case 11 -> {return "Note that points someplace"; }
             case 2 -> { return "Compass"; }
             case 3 -> { return "Marker"; }
             case 4 -> { return "Grenade"; }
@@ -25,6 +22,9 @@ public class Item {
             case 7 -> { return "Radar"; }
             case 8 -> { return "Map"; }
             case 9 -> { return "Blue Keycard"; }
+            /* internal items */
+            case 11 -> { return "Exit door"; }
+            case 12 -> { return "Exit door"; }
         }
         return "mystery item";
     }
