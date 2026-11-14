@@ -6,23 +6,23 @@ import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 
 public class World {
-    /* colours  :)  */                        // code here vvv
-    private static final String DARK_GRAY   = "\u001b[38;5;236m";
-    private static final String MID_GRAY    = "\u001b[38;5;238m";
-    private static final String GRAY        = "\u001b[38;5;241m";
-    private static final String CYAN        = "\u001b[38;5;51m";
-    private static final String CLUE        = "\u001b[38;5;9m";
-    private static final String FAINT_CLUE  = "\u001b[38;5;52m";
-    private static final String DOOR        = "\u001b[38;5;39m";
-    private static final String DARK_DOOR   = "\u001b[38;5;17m";
-    private static final String YELLOW      = "\u001b[38;5;11m";
-    private static final String RESET       = "\u001b[0m";
+    /* colours :) */ // code here vvv
+    private static final String DARK_GRAY = "\u001b[38;5;236m";
+    private static final String MID_GRAY = "\u001b[38;5;238m";
+    private static final String GRAY = "\u001b[38;5;241m";
+    private static final String CYAN = "\u001b[38;5;51m";
+    private static final String CLUE = "\u001b[38;5;9m";
+    private static final String FAINT_CLUE = "\u001b[38;5;52m";
+    private static final String DOOR = "\u001b[38;5;39m";
+    private static final String DARK_DOOR = "\u001b[38;5;17m";
+    private static final String YELLOW = "\u001b[38;5;11m";
+    private static final String RESET = "\u001b[0m";
 
     private static int VISIBILITY_RADIUS = 20;
     private static final transient boolean COLLISIONS_ENABLED = true;
-    
-    public final int WORLD_HEIGHT = 1001;    // should be odd
-    public final int WORLD_WIDTH = WORLD_HEIGHT - 1;     // should be even
+
+    public final int WORLD_HEIGHT = 1001; // should be odd
+    public final int WORLD_WIDTH = WORLD_HEIGHT - 1; // should be even
     // 1mb of memory isn't too bad
     // maybe we shouldn't generate the whole maze in one go...
     private char[][] world = new char[WORLD_HEIGHT][WORLD_WIDTH];
@@ -47,7 +47,7 @@ public class World {
     public boolean won = false;
     public boolean allowed_to_leave = true;
 
-    // inventory 
+    // inventory
     private int selected_item_idx = -1; // -1: not selecting anything
 
     public World() {
@@ -55,15 +55,15 @@ public class World {
         MazeGenerator m = new MazeGenerator(WORLD_WIDTH, WORLD_HEIGHT);
         this.world = m.generate_maze();
         System.out.println("maze is generated");
-        
+
         generate_clues();
         System.out.println("clues r generated");
-        
-        EXIT_CODE = (long)(Math.random() * 10_000_000_000L);
-        
+
+        EXIT_CODE = (long) (Math.random() * 10_000_000_000L);
+
         // generate exit door
-        while (true) { 
-            int random_position = (int)(Math.random() * WORLD_WIDTH);
+        while (true) {
+            int random_position = (int) (Math.random() * WORLD_WIDTH);
             if (world[1][random_position] == ',') {
                 world[0][random_position] = '^';
                 exit_door_location = new Point(random_position, 0);
@@ -71,7 +71,7 @@ public class World {
             }
         }
         System.out.println("door is generated");
-        
+
         player.x = WORLD_WIDTH / 2 + 1;
         player.y = WORLD_HEIGHT / 2 + 1;
 
@@ -82,11 +82,11 @@ public class World {
     }
 
     private void generate_clues() {
-        double c = Math.hypot(WORLD_WIDTH, WORLD_HEIGHT);   // constant for scaling circles
-        int mx = WORLD_WIDTH / 2;   // midpoint
+        double c = Math.hypot(WORLD_WIDTH, WORLD_HEIGHT); // constant for scaling circles
+        int mx = WORLD_WIDTH / 2; // midpoint
         int my = WORLD_HEIGHT / 2;
 
-        int debug_spawn_multiplier = 1;
+        int debug_spawn_multiplier = 4;
 
         generate_ring(mx, my, c / 10.0, 2 * debug_spawn_multiplier);
         generate_ring(mx, my, c / 25.0, 8 * debug_spawn_multiplier);
@@ -103,8 +103,8 @@ public class World {
         for (int i = 0; i < c; i++) {
             double angle = Math.random() * Math.TAU;
             double radius_jiggle = ring_width * (Math.random() - 0.5);
-            int cx = (int)(Math.cos(angle) * (radius + radius_jiggle) + mx);
-            int cy = (int)(Math.sin(angle) * (radius + radius_jiggle) + my);
+            int cx = (int) (Math.cos(angle) * (radius + radius_jiggle) + mx);
+            int cy = (int) (Math.sin(angle) * (radius + radius_jiggle) + my);
             if (this.world[cy][cx] != '#') { // only replace walls with clues
                 i -= 1;
                 continue;
@@ -132,17 +132,17 @@ public class World {
         String[] lines = new String[height];
         String status_bar_template = "%-" + width + "s"; // align to left with spacing
         lines[0] = String.format(status_bar_template, "Maze game v0.1.1 [11-10-2026]");
-        
+
         int sidebar_width = Math.min(40, width / 4);
-        
+
         int maze_width = width - sidebar_width - 1; // -1 for 1-char buffer between maze and sidebar
         int maze_height = height - 1;
         int start_x = this.player.x - (maze_width / 2);
         int start_y = this.player.y - (maze_height / 2);
-        
+
         /* render maze */
 
-        int lines_index = 1;    // first line used by status bar
+        int lines_index = 1; // first line used by status bar
         for (int i = start_y; i < start_y + maze_height; i++) {
             String current_line = "";
             if (i < 0 || i >= WORLD_HEIGHT) {
@@ -158,7 +158,7 @@ public class World {
                     current_line += " ".repeat(-j);
                     j = 0;
 
-                } 
+                }
                 if (j >= WORLD_WIDTH) {
                     // repeat space until the end of the line (outside of maze)
                     current_line += " ".repeat(start_x + maze_width - WORLD_WIDTH);
@@ -174,11 +174,20 @@ public class World {
 
                 if (Math.hypot(j - this.player.x, (i - this.player.y) * 2) > VISIBILITY_RADIUS) {
                     switch (ch) {
-                        case '#' -> { ch = ':'; }
-                        case ',' -> { ch = ' '; }
-                        case '%' -> { ch = '!'; }
-                        case '^' -> { ch = '*'; }
-                        default -> {}
+                        case '#' -> {
+                            ch = ':';
+                        }
+                        case ',' -> {
+                            ch = ' ';
+                        }
+                        case '%' -> {
+                            ch = '!';
+                        }
+                        case '^' -> {
+                            ch = '*';
+                        }
+                        default -> {
+                        }
                     }
                 }
 
@@ -207,14 +216,13 @@ public class World {
                 int item_start_y = height - 16;
                 int item_start_x = width - 31;
                 lines[item_start_y - 1] = Utils.write_string(lines[item_start_y - 1], "Press F to use", item_start_x);
-                
+
                 String[] item_render = render(i, this.player.x, this.player.y);
                 for (int n = item_start_y; n < height - 1; n++) {
                     lines[n] = Utils.write_string(
-                        lines[n], 
-                        item_render[n - item_start_y], 
-                        item_start_x
-                    );
+                            lines[n],
+                            item_render[n - item_start_y],
+                            item_start_x);
                 }
             }
             String item_str = String.format(template, i.get_name());
@@ -237,32 +245,34 @@ public class World {
             lines[item_start_idx - 1] = Utils.write_string(lines[item_start_idx - 1], top_line, item_start_char);
             int line_idx = 0;
             for (String line : item_sprite) {
-                lines[item_start_idx + line_idx] = Utils.write_string(lines[item_start_idx + line_idx], "|" + line + "|", item_start_char);
+                lines[item_start_idx + line_idx] = Utils.write_string(lines[item_start_idx + line_idx],
+                        "|" + line + "|", item_start_char);
                 line_idx += 1;
             }
 
             String bottom_line = "=" + Utils.center_string("Press E to pick up", item_width) + "=";
-            lines[item_start_idx + item_sprite.length] = Utils.write_string(lines[item_start_idx + item_sprite.length], bottom_line, item_start_char);
+            lines[item_start_idx + item_sprite.length] = Utils.write_string(lines[item_start_idx + item_sprite.length],
+                    bottom_line, item_start_char);
         }
 
         // objective (at the top)
         int objective_dialog_width = 29;
         String objective_dialog_covers = "-".repeat(objective_dialog_width);
-        String objective_dialog_message = "|" + Utils.center_string(get_objective(this.player.level), (objective_dialog_width - 2)) + "|";
+        String objective_dialog_message = "|"
+                + Utils.center_string(get_objective(this.player.level), (objective_dialog_width - 2)) + "|";
 
         int objective_dialog_topleft_x = (maze_width - objective_dialog_width) / 2;
 
         String[] objective_dialog = {
-            objective_dialog_covers, objective_dialog_message, objective_dialog_covers
+                objective_dialog_covers, objective_dialog_message, objective_dialog_covers
         };
 
         for (int i = 0; i < objective_dialog.length; i++) {
             int idx = i + 2;
             lines[idx] = Utils.write_string(
-                lines[idx], 
-                objective_dialog[i], 
-                objective_dialog_topleft_x
-            );
+                    lines[idx],
+                    objective_dialog[i],
+                    objective_dialog_topleft_x);
         }
 
         /* apply colours */
@@ -274,18 +284,27 @@ public class World {
             lines[i] = line;
         }
 
-
         System.out.print(String.join("\n", lines));
         System.out.flush();
     }
 
     private String get_objective(int player_level) {
         switch (player_level) {
-            case 0 -> { return "Locate a clue (%)."; }
-            case 1 -> { return "Find a yellow keycard"; }   // if the player does not have a yellow keycard
-            case 2 -> { return "Find a blue keycard."; }    // if the player does not have a blue keycard
-            case 3 -> { return "Locate the exit."; }        // if the player has a blue keycard
-            default -> { return ""; }
+            case 0 -> {
+                return "Locate a clue (%).";
+            }
+            case 1 -> {
+                return "Find a yellow keycard";
+            } // if the player does not have a yellow keycard
+            case 2 -> {
+                return "Find a blue keycard.";
+            } // if the player does not have a blue keycard
+            case 3 -> {
+                return "Locate the exit.";
+            } // if the player has a blue keycard
+            default -> {
+                return "";
+            }
         }
     }
 
@@ -316,7 +335,9 @@ public class World {
                 }
             }
             case Keybinds.PICK_UP -> {
-                if (!this.opened_clue || this.clue_item.id == 0 || this.opened_exit_door) { return false; }
+                if (!this.opened_clue || this.clue_item.id == 0 || this.opened_exit_door) {
+                    return false;
+                }
                 this.player.items.add(clue_item);
                 if (this.clue_item.id == 5 && this.player.level == 1) { // progression level
                     this.player.level = 2;
@@ -339,7 +360,9 @@ public class World {
                 }
             }
             case Keybinds.USE -> {
-                if (selected_item_idx == -1) { return false; }
+                if (selected_item_idx == -1) {
+                    return false;
+                }
                 if (use_item(this.player.items.get(this.selected_item_idx))) {
                     this.player.items.remove(selected_item_idx);
                     this.selected_item_idx -= 1;
@@ -347,7 +370,8 @@ public class World {
             }
             case Keybinds.COPY_TEXT -> {
                 String text;
-                if (!this.opened_clue && this.selected_item_idx > -1 && this.player.items.get(selected_item_idx).id == 1) {
+                if (!this.opened_clue && this.selected_item_idx > -1
+                        && this.player.items.get(selected_item_idx).id == 1) {
                     text = this.player.items.get(selected_item_idx).text;
                 } else if (this.opened_clue) {
                     text = this.clue_item.text;
@@ -359,57 +383,79 @@ public class World {
                 clipboard.setContents(stringSelection, null);
             }
             case Keybinds.N1 -> {
-                if (!(opened_exit_door && used_blue_keycard) || entered_exit_code >= 1_000_000_000L) { return false; }
+                if (!(opened_exit_door && used_blue_keycard) || entered_exit_code >= 1_000_000_000L) {
+                    return false;
+                }
                 entered_exit_code *= 10;
                 entered_exit_code += 1;
             }
             case Keybinds.N2 -> {
-                if (!(opened_exit_door && used_blue_keycard) || entered_exit_code >= 1_000_000_000L) { return false; }
+                if (!(opened_exit_door && used_blue_keycard) || entered_exit_code >= 1_000_000_000L) {
+                    return false;
+                }
                 entered_exit_code *= 10;
                 entered_exit_code += 2;
             }
             case Keybinds.N3 -> {
-                if (!(opened_exit_door && used_blue_keycard) || entered_exit_code >= 1_000_000_000L) { return false; }
+                if (!(opened_exit_door && used_blue_keycard) || entered_exit_code >= 1_000_000_000L) {
+                    return false;
+                }
                 entered_exit_code *= 10;
                 entered_exit_code += 3;
             }
             case Keybinds.N4 -> {
-                if (!(opened_exit_door && used_blue_keycard) || entered_exit_code >= 1_000_000_000L) { return false; }
+                if (!(opened_exit_door && used_blue_keycard) || entered_exit_code >= 1_000_000_000L) {
+                    return false;
+                }
                 entered_exit_code *= 10;
                 entered_exit_code += 4;
             }
             case Keybinds.N5 -> {
-                if (!(opened_exit_door && used_blue_keycard) || entered_exit_code >= 1_000_000_000L) { return false; }
+                if (!(opened_exit_door && used_blue_keycard) || entered_exit_code >= 1_000_000_000L) {
+                    return false;
+                }
                 entered_exit_code *= 10;
                 entered_exit_code += 5;
             }
             case Keybinds.N6 -> {
-                if (!(opened_exit_door && used_blue_keycard) || entered_exit_code >= 1_000_000_000L) { return false; }
+                if (!(opened_exit_door && used_blue_keycard) || entered_exit_code >= 1_000_000_000L) {
+                    return false;
+                }
                 entered_exit_code *= 10;
                 entered_exit_code += 6;
             }
             case Keybinds.N7 -> {
-                if (!(opened_exit_door && used_blue_keycard) || entered_exit_code >= 1_000_000_000L) { return false; }
+                if (!(opened_exit_door && used_blue_keycard) || entered_exit_code >= 1_000_000_000L) {
+                    return false;
+                }
                 entered_exit_code *= 10;
                 entered_exit_code += 7;
             }
             case Keybinds.N8 -> {
-                if (!(opened_exit_door && used_blue_keycard) || entered_exit_code >= 1_000_000_000L) { return false; }
+                if (!(opened_exit_door && used_blue_keycard) || entered_exit_code >= 1_000_000_000L) {
+                    return false;
+                }
                 entered_exit_code *= 10;
                 entered_exit_code += 8;
             }
             case Keybinds.N9 -> {
-                if (!(opened_exit_door && used_blue_keycard) || entered_exit_code >= 1_000_000_000L) { return false; }
+                if (!(opened_exit_door && used_blue_keycard) || entered_exit_code >= 1_000_000_000L) {
+                    return false;
+                }
                 entered_exit_code *= 10;
                 entered_exit_code += 9;
             }
             case Keybinds.N0 -> {
-                if (!(opened_exit_door && used_blue_keycard) || entered_exit_code >= 1_000_000_000L) { return false; }
+                if (!(opened_exit_door && used_blue_keycard) || entered_exit_code >= 1_000_000_000L) {
+                    return false;
+                }
                 entered_exit_code *= 10;
                 entered_exit_code += 0;
             }
             case Keybinds.ENTER -> {
-                if (!(opened_exit_door && used_blue_keycard)) { return false; }
+                if (!(opened_exit_door && used_blue_keycard)) {
+                    return false;
+                }
                 if (entered_exit_code == EXIT_CODE) {
                     win();
                 } else {
@@ -417,9 +463,16 @@ public class World {
                     this.entered_exit_code = 0;
                 }
             }
-            case Keybinds.EXIT -> { return true; }
-            case Keybinds.ESCAPE -> { this.opened_clue = false; this.opened_exit_door = false; }
-            default -> { return false; }
+            case Keybinds.EXIT -> {
+                return true;
+            }
+            case Keybinds.ESCAPE -> {
+                this.opened_clue = false;
+                this.opened_exit_door = false;
+            }
+            default -> {
+                return false;
+            }
         }
 
         return false;
@@ -427,10 +480,13 @@ public class World {
 
     // returns true if the item was used, false if not
     public boolean use_item(Item item) {
-         switch (item.id) {
-            case 0 -> {} // nothing
-            case 1 -> {} // note
-            case 2 -> {} // compass
+        switch (item.id) {
+            case 0 -> {
+            } // nothing
+            case 1 -> {
+            } // note
+            case 2 -> {
+            } // compass
             case 3 -> { // marker
                 world[this.player.y][this.player.x] = 'X';
                 return true;
@@ -448,40 +504,70 @@ public class World {
                 return true;
             }
             case 5 -> { // yellow keycard
-                // if you close and reopen the clue after using the yellow keycard it will re-lock.
-                if (!this.opened_clue || this.clue_item.id != 10) { return false; }
+                // if you close and reopen the clue after using the yellow keycard it will
+                // re-lock.
+                if (!this.opened_clue || this.clue_item.id != 10) {
+                    return false;
+                }
                 this.clue_item = new Item(9);
                 return true;
             }
             case 6 -> { // flashlight
-                if (VISIBILITY_RADIUS == 30) VISIBILITY_RADIUS = 20;
-                else  VISIBILITY_RADIUS = 30;
+                if (VISIBILITY_RADIUS == 30)
+                    VISIBILITY_RADIUS = 20;
+                else
+                    VISIBILITY_RADIUS = 30;
             }
-            case 7 -> {} // radar
-            case 8 -> {} // map
+            case 7 -> {
+            } // radar
+            case 8 -> {
+            } // map
             case 9 -> { // blue keycard
-                if (!this.opened_exit_door || this.clue_item.id != 11) { return false; }
+                if (!this.opened_exit_door || this.clue_item.id != 11) {
+                    return false;
+                }
                 this.clue_item = new Item(12);
                 this.used_blue_keycard = true;
                 return true;
             }
-            case 10 -> {} // locked box (blue keycard)
+            case 10 -> {
+            } // locked box (blue keycard)
         }
         return false;
     }
 
     public static String char_colour(char ch) {
         switch (ch) {
-            case ',' -> { return DARK_GRAY; }
-            case ':' -> { return MID_GRAY; }
-            case '#' -> { return GRAY; }
-            case '@' -> { return CYAN; }
-            case '%' -> { return CLUE; }
-            case '!' -> { return FAINT_CLUE; }
-            case '^' -> { return DOOR; }
-            case '*' -> { return DARK_DOOR; }
-            case 'X' -> { return YELLOW; }
-            default ->  { return RESET; }
+            case ',' -> {
+                return DARK_GRAY;
+            }
+            case ':' -> {
+                return MID_GRAY;
+            }
+            case '#' -> {
+                return GRAY;
+            }
+            case '@' -> {
+                return CYAN;
+            }
+            case '%' -> {
+                return CLUE;
+            }
+            case '!' -> {
+                return FAINT_CLUE;
+            }
+            case '^' -> {
+                return DOOR;
+            }
+            case '*' -> {
+                return DARK_DOOR;
+            }
+            case 'X' -> {
+                return YELLOW;
+            }
+            default -> {
+                return RESET;
+            }
         }
     }
 
@@ -489,23 +575,29 @@ public class World {
     // return false if there's an obstruction
     private boolean check_coll(int nx, int ny) {
         switch (this.world[ny][nx]) {
-            case '@' -> { return true; }
-            case '.' -> { return true; }
-            case '#' -> { return false; }
+            case '@' -> {
+                return true;
+            }
+            case '.' -> {
+                return true;
+            }
+            case '#' -> {
+                return false;
+            }
             case '%' -> {
                 // update progression level
                 if (this.player.level == 0) {
                     this.player.level = 1;
                 }
-                
+
                 boolean found_clue = false;
                 for (Point p : found_clues) {
-                    if (p.x() == nx && p.y() == ny) { 
+                    if (p.x() == nx && p.y() == ny) {
                         found_clue = true;
                         break;
                     }
                 }
-                
+
                 Item item;
                 if (found_clue) {
                     item = new Item(0);
@@ -516,9 +608,11 @@ public class World {
                 opened_clue = true;
                 this.opened_clue_location = new Point(nx, ny);
                 clue_item = item;
-                return false; 
+                return false;
             }
-            default ->  { return true; }
+            default -> {
+                return true;
+            }
             case '^' -> {
                 opened_exit_door = true;
                 if (used_blue_keycard && entered_code) {
@@ -542,33 +636,36 @@ public class World {
                 if (0 <= item_hash && item_hash < 20) {
                     Item note = new Item(1);
                     String[] texts = {
-                        "Now where could this exit\npossibly be?",
-                        "I wonder where\nI should go next...",
-                        "Try somewhere else.",
-                        "I don't know what\nyou're looking for.",
-                        "...zzz...",
+                            "Now where could this exit\npossibly be?",
+                            "I wonder where\nI should go next...",
+                            "Try somewhere else.",
+                            "I don't know what\nyou're looking for.",
+                            "...zzz...",
                     };
-                    note.text = texts[(int)(Math.random() * texts.length)];
+                    note.text = texts[(int) (Math.random() * texts.length)];
                     return note;
                 } else if (20 < item_hash && item_hash <= 40) {
                     Item note = new Item(1);
-                    note.text = String.format("The code is: \n[%-10s]", Long.toString(this.EXIT_CODE).replace(" ", "0"));
+                    note.text = String.format("The code is: \n[%-10s]",
+                            Long.toString(this.EXIT_CODE).replace(" ", "0"));
                     return note;
                 } else if (found_clues.size() < clues.size()) {
                     Item note = new Item(1);
-                    
-                    while (true) { 
-                        int rand_clue_idx = (int)(Math.random() * (double)clues.size());
-                        if (found_clues.contains(clues.get(rand_clue_idx))) continue;
+
+                    while (true) {
+                        int rand_clue_idx = (int) (Math.random() * (double) clues.size());
+                        if (found_clues.contains(clues.get(rand_clue_idx)))
+                            continue;
 
                         Point c = clues.get(rand_clue_idx);
                         double dist = Math.hypot(this.player.x - c.x(), this.player.y - c.y());
                         note.compass_target = c;
-                        note.text = String.format("There is a %s\nlocated %.2fm away.", get_item_at(c.x(), c.y()).get_name(), dist);
+                        note.text = String.format("There is a %s\nlocated %.2fm away.",
+                                get_item_at(c.x(), c.y()).get_name(), dist);
                         break;
                     }
 
-                    return note;                    
+                    return note;
                 } else {
                     Item note = new Item(0);
                     return note;
@@ -617,19 +714,19 @@ public class World {
                     if (Math.random() < 0.05) {
                         item.compass_target = exit_door_location;
                     } else {
-                        int clue_idx = (int)(Math.random() * clues.size());
+                        int clue_idx = (int) (Math.random() * clues.size());
                         item.compass_target = this.clues.get(clue_idx);
                     }
                     return item;
                 } else if (15 <= item_hash && item_hash < 40) {
-                    return new Item(3); 
-                } else if (40 <= item_hash && item_hash < 60) {
+                    return new Item(3);
+                } else if (40 <= item_hash && item_hash < 70) {
                     return new Item(4);
-                } else if (60 <= item_hash && item_hash < 70) {
+                } else if (70 <= item_hash && item_hash < 80) {
                     return new Item(5);
-                } else if (70 <= item_hash && item_hash < 75) {
+                } else if (80 <= item_hash && item_hash < 85) {
                     return new Item(10); // return a blue safe
-                } else if (75 <= item_hash && item_hash < 95) {
+                } else if (85 <= item_hash && item_hash < 95) {
                     return new Item(6);
                 } else if (95 <= item_hash && item_hash < 100) {
                     return new Item(7);
@@ -639,7 +736,8 @@ public class World {
             }
             case 3 -> {
                 Item note = new Item(8);
-                note.compass_target = new Point((int)(Math.random() * (double)WORLD_WIDTH), (int)(Math.random() * (double)WORLD_HEIGHT));
+                note.compass_target = new Point((int) (Math.random() * (double) (WORLD_WIDTH - 30)) + 15,
+                        (int) (Math.random() * (double) (WORLD_HEIGHT - 16)) + 8);
                 return note;
             }
         }
@@ -683,46 +781,46 @@ public class World {
         }
     }
 
-     // return as 30x15
+    // return as 30x15
     public String[] render(Item i, int cx, int cy) {
         switch (i.id) {
             case 0 -> { /* nothing/scraps */
                 return Item.to_lines("""
-                  . ,      _ .   ,     .   _ .
-                    ^      ,  .     *    /   .
-                ;  `    '        .    ,   _  .
-                .- _  &   -  .    *   -      .
-                    :                    .x  .
-                    ^      ,  .     *        .
-                        .              .     .
-                x                          xx.
-                x       ;     '     ^        .
-                ....x.     . ?            ..x.
-                xxxx                    >   x.
-                x                          xx.
-                xx  ^      ,  .     *       x.
-                x                "          xx
-                ..    ----   __          ....x
-                """);   
+                          . ,      _ .   ,     .   _ .
+                            ^      ,  .     *    /   .
+                        ;  `    '        .    ,   _  .
+                        .- _  &   -  .    *   -      .
+                            :                    .x  .
+                            ^      ,  .     *        .
+                                .              .     .
+                        x                          xx.
+                        x       ;     '     ^        .
+                        ....x.     . ?            ..x.
+                        xxxx                    >   x.
+                        x                          xx.
+                        xx  ^      ,  .     *       x.
+                        x                "          xx
+                        ..    ----   __          ....x
+                        """);
             }
             case 1 -> { /* note - render text split at lines */
                 String[] base = Item.to_lines("""
-                 _,,,..>***^^^^^^^^***<..,,,_.
-                ;%                          \\, 
-                /                            |
-                ]                            [
-                [                            ]
-                ]                            [
-                [                            ]
-                ]                            [
-                [                            ]
-                ]                            [
-                [                            ]
-                ]                            ^
-                [                            ]
-                \\.                          &^
-                 ^&+++=>***^^-^^^-^***<=+++=*. 
-                """);
+                         _,,,..>***^^^^^^^^***<..,,,_.
+                        ;%                          \\,
+                        /                            |
+                        ]                            [
+                        [                            ]
+                        ]                            [
+                        [                            ]
+                        ]                            [
+                        [                            ]
+                        ]                            [
+                        [                            ]
+                        ]                            ^
+                        [                            ]
+                        \\.                          &^
+                         ^&+++=>***^^-^^^-^***<=+++=*.
+                        """);
 
                 String[] lines = i.text.split("\n");
                 int index = (15 - lines.length) / 2;
@@ -735,7 +833,9 @@ public class World {
                         truncated = line;
                     }
                     base[index] = Utils.write_string(base[index], truncated, Math.max(2, 15 - (line.length() / 2)));
-                    if (index >= base.length) { break; }
+                    if (index >= base.length) {
+                        break;
+                    }
                     index += 1;
                 }
 
@@ -750,104 +850,104 @@ public class World {
             }
             case 3 -> { // marker
                 return Item.to_lines(
-"""
-                             .
-                             .
-       ._           ,_       .
-     :[##$:      ,&##P>      .
-       `!#$'.  ,i##$^        .
-         `&#i-i##$^          .
-          >#####<            .
-        u*#:$-&##j.          .
-      u/#&`    `$##j.        .
-    *5##^        `$##k:      .
-     `^            `*'       .
-                             .
-                             .
-                             .
-                             .
-""");
+                        """
+                                                             .
+                                                             .
+                                       ._           ,_       .
+                                     :[##$:      ,&##P>      .
+                                       `!#$'.  ,i##$^        .
+                                         `&#i-i##$^          .
+                                          >#####<            .
+                                        u*#:$-&##j.          .
+                                      u/#&`    `$##j.        .
+                                    *5##^        `$##k:      .
+                                     `^            `*'       .
+                                                             .
+                                                             .
+                                                             .
+                                                             .
+                                """);
             }
             case 4 -> { // grenade
                 return Item.to_lines(
-"""
-                             .
-       -=#########           .
-        7##########,--:\\    . 
-          ####  ####    |    .
-          ###########    ]   .
-          |%###   \\###  ;   . 
-          |%##|    "-##/     .
-      _,=..###&*=+_.  ##     .
-    ;`'*########L=...':,#    .
-   ::=###########Up=...:     .
-   :,*&##########%*=...o:    .
-    ~7.*X###%#/%%**=.k~`     .
-     `:vK.U27!(*2/....       .
-         ```^::^```          .
-                             .
-""");
+                        """
+                                                             .
+                                       -=#########           .
+                                        7##########,--:\\    .
+                                          ####  ####    |    .
+                                          ###########    ]   .
+                                          |%###   \\###  ;   .
+                                          |%##|    "-##/     .
+                                      _,=..###&*=+_.  ##     .
+                                    ;`'*########L=...':,#    .
+                                   ::=###########Up=...:     .
+                                   :,*&##########%*=...o:    .
+                                    ~7.*X###%#/%%**=.k~`     .
+                                     `:vK.U27!(*2/....       .
+                                         ```^::^```          .
+                                                             .
+                                """);
             }
             case 5 -> { // yellow keycard
                 return Item.to_lines(
-"""
-                             .
-                             .
-   +----------------------+  .
-   | Yellow keycard       |  .
-   |                      |  .
-   | Use this to unlock   |  .
-   | valuables...         |  .
-   |                      |  .
-   |                      |  .
-   +----------------------+  .
-                             .
-                             .
-                             .
-                             .
-                             .
-                             .
-""");
+                        """
+                                                             .
+                                                             .
+                                   +----------------------+  .
+                                   | Yellow keycard       |  .
+                                   |                      |  .
+                                   | Use this to unlock   |  .
+                                   | valuables...         |  .
+                                   |                      |  .
+                                   |                      |  .
+                                   +----------------------+  .
+                                                             .
+                                                             .
+                                                             .
+                                                             .
+                                                             .
+                                                             .
+                                """);
             }
             case 6 -> { // flashlight
                 return Item.to_lines(
-"""
-                             .
-             ,_,             .
-        .o$GGGGGG&=v         .
-       :GGGGGGGGGGGG;        .
-        7GGGGGGGGG%/         .
-          ^*GGGGM"           .
-           ._%>`             .
-           ._%>`             .
-           ._%>`             .
-           ._%>`             .
-           ._%>`             .
-           ._%>`             .
-           ._%>`             .
-            ^~^              .
-                             .
-""");
+                        """
+                                                             .
+                                             ,_,             .
+                                        .o$GGGGGG&=v         .
+                                       :GGGGGGGGGGGG;        .
+                                        7GGGGGGGGG%/         .
+                                          ^*GGGGM"           .
+                                           ._%>`             .
+                                           ._%>`             .
+                                           ._%>`             .
+                                           ._%>`             .
+                                           ._%>`             .
+                                           ._%>`             .
+                                           ._%>`             .
+                                            ^~^              .
+                                                             .
+                                """);
             }
             case 7 -> { // radar
-                String[] base = Item.to_lines( 
-"""
-         ,oGGGGGGo.          .
-     ,:%%^        ^%%:,      .
-   ,%^                `%.    .
-  :%                    `&   .
- 7*                      Tv  .
- $                        &  .
-/                          $ .
-%                          $ .
-&                          $ .
- $                        $  .
- "                       ,~  .
-  ^                     /^   .
-   ?                  ,%"    .
-   '`^%%*,        .*$@^      .
-         `%$$$$$$&'          .
-""");
+                String[] base = Item.to_lines(
+                        """
+                                         ,oGGGGGGo.          .
+                                     ,:%%^        ^%%:,      .
+                                   ,%^                `%.    .
+                                  :%                    `&   .
+                                 7*                      Tv  .
+                                 $                        &  .
+                                /                          $ .
+                                %                          $ .
+                                &                          $ .
+                                 $                        $  .
+                                 "                       ,~  .
+                                  ^                     /^   .
+                                   ?                  ,%"    .
+                                   '`^%%*,        .*$@^      .
+                                         `%$$$$$$&'          .
+                                """);
                 // render a 50x50 circle around the player
                 // every pixel on the item represents a 2x4 cell area in the maze
                 for (int x = 0; x < 25; x++) {
@@ -856,57 +956,56 @@ public class World {
                         if (Math.hypot(x - 12, (y - 6)) > 12.5) {
                             continue;
                         }
-                        
+
                         int world_x = x * 2 + cx - 25;
                         int world_y = y * 4 + cy - 25;
 
-                        if (world_x < 0 || world_y < 0 || world_x >= WORLD_WIDTH - 1 || world_y >= WORLD_HEIGHT - 3) { continue; }
+                        if (world_x < 0 || world_y < 0 || world_x >= WORLD_WIDTH - 1 || world_y >= WORLD_HEIGHT - 3) {
+                            continue;
+                        }
                         // check in a 2x2 area for stuff
                         char thing = ' ';
-                        if (
-                            world[world_y][world_x] == '^' ||  world[world_y][world_x + 1] == '^' || 
-                            world[world_y + 1][world_x] == '^' || world[world_y + 1][world_x + 1] == '^' ||
-                            world[world_y + 2][world_x] == '^' || world[world_y + 2][world_x + 1] == '^' ||
-                            world[world_y + 3][world_x] == '^' || world[world_y + 3][world_x + 1] == '^' 
-                        ) {
+                        if (world[world_y][world_x] == '^' || world[world_y][world_x + 1] == '^' ||
+                                world[world_y + 1][world_x] == '^' || world[world_y + 1][world_x + 1] == '^' ||
+                                world[world_y + 2][world_x] == '^' || world[world_y + 2][world_x + 1] == '^' ||
+                                world[world_y + 3][world_x] == '^' || world[world_y + 3][world_x + 1] == '^') {
                             thing = '^';
-                        } else if (
-                            world[world_y][world_x] == '%' ||  world[world_y][world_x + 1] == '%' || 
-                            world[world_y + 1][world_x] == '%' || world[world_y + 1][world_x + 1] == '%' ||
-                            world[world_y + 2][world_x] == '%' || world[world_y + 2][world_x + 1] == '%' ||
-                            world[world_y + 3][world_x] == '%' || world[world_y + 3][world_x + 1] == '%' 
-                        ) {
+                        } else if (world[world_y][world_x] == '%' || world[world_y][world_x + 1] == '%' ||
+                                world[world_y + 1][world_x] == '%' || world[world_y + 1][world_x + 1] == '%' ||
+                                world[world_y + 2][world_x] == '%' || world[world_y + 2][world_x + 1] == '%' ||
+                                world[world_y + 3][world_x] == '%' || world[world_y + 3][world_x + 1] == '%') {
                             thing = '%';
                         }
                         base[y + 1] = base[y + 1].substring(0, x + 2) + thing + base[y + 1].substring(x + 3);
                     }
                 }
 
-
                 return base;
             }
             case 8 -> {
                 String[] base = new String[] {
-                    " ".repeat(30),
-                    " ".repeat(30),
-                    " ".repeat(30),
-                    " ".repeat(30),
-                    " ".repeat(30), // 5
-                    " ".repeat(30),
-                    " ".repeat(30),
-                    " ".repeat(30),
-                    " ".repeat(30),
-                    " ".repeat(30), // 10
-                    " ".repeat(30),
-                    " ".repeat(30),
-                    " ".repeat(30),
-                    " ".repeat(30),
-                    " ".repeat(30), // 15
+                        " ".repeat(30),
+                        " ".repeat(30),
+                        " ".repeat(30),
+                        " ".repeat(30),
+                        " ".repeat(30), // 5
+                        " ".repeat(30),
+                        " ".repeat(30),
+                        " ".repeat(30),
+                        " ".repeat(30),
+                        " ".repeat(30), // 10
+                        " ".repeat(30),
+                        " ".repeat(30),
+                        " ".repeat(30),
+                        " ".repeat(30),
+                        " ".repeat(30), // 15
                 };
 
                 for (int y = -7; y <= 7; y++) {
                     for (int x = -14; x <= 15; x++) {
-                        base[y + 7] = base[y + 7].substring(0, x + 14) + world[y + i.compass_target.y()][x + i.compass_target.x()] + base[y + 7].substring(x + 15);
+                        base[y + 7] = base[y + 7].substring(0, x + 14)
+                                + world[y + i.compass_target.y()][x + i.compass_target.x()]
+                                + base[y + 7].substring(x + 15);
                     }
                 }
 
@@ -914,118 +1013,119 @@ public class World {
             }
             case 9 -> { // blue keycard
                 return Item.to_lines(
-"""
-                             .
-                             .
-   +-^-^-^-^-^-^-^-^-^-^-^+  .
-   | ^BLUE^ keycard       |  .
-   |                      |  .
-   | Use this to unlock   |  .
-   | something special ^  |  .
-   |                      |  .
-   |                      |  .
-   +^-^-^-^-^-^-^-^-^-^-^-+  .
-                             .
-                             .
-                             .
-                             .
-                             .
-                             .
-""");
+                        """
+                                                             .
+                                                             .
+                                   +-^-^-^-^-^-^-^-^-^-^-^+  .
+                                   | ^BLUE^ keycard       |  .
+                                   |                      |  .
+                                   | Use this to unlock   |  .
+                                   | something special ^  |  .
+                                   |                      |  .
+                                   |                      |  .
+                                   +^-^-^-^-^-^-^-^-^-^-^-+  .
+                                                             .
+                                                             .
+                                                             .
+                                                             .
+                                                             .
+                                                             .
+                                """);
             }
             /* internal items, used for screens */
             case 10 -> { // blue keycard (not unlocked)
                 return Item.to_lines("""
-                             .
-                             .
-                             .
-                             .
-                             .
-                             .
-                             .
-  [ Requires yellow keycard ].
-                             .
-                             .
-                             .
-                             .
-                             .
-                             .
-                             .""");
+                                                   .
+                                                   .
+                                                   .
+                                                   .
+                                                   .
+                                                   .
+                                                   .
+                        [ Requires yellow keycard ].
+                                                   .
+                                                   .
+                                                   .
+                                                   .
+                                                   .
+                                                   .
+                                                   .""");
             }
             case 11 -> { // exit door (keycard)
-return Item.to_lines("""
-                             .
-                             .
-                             .
-                             .
-                             .
-                             .
-                             .
-  [ Requires blue keycard ]  .
-                             .
-                             .
-                             .
-                             .
-                             .
-                             .
-                             .""");
+                return Item.to_lines("""
+                                                   .
+                                                   .
+                                                   .
+                                                   .
+                                                   .
+                                                   .
+                                                   .
+                        [ Requires blue keycard ]  .
+                                                   .
+                                                   .
+                                                   .
+                                                   .
+                                                   .
+                                                   .
+                                                   .""");
             }
             case 12 -> { // exit door (code)
                 return Item.to_lines(String.format("""
-                             .
-                             .
-                             .
-                             .
-                             .
-                             .
-                             .
-  [ Code : %-10s     ]  .
-                             .
-                             .
-                             .
-                             .
-                             .
-                             .
-                             .""", this.entered_exit_code)); 
+                                                   .
+                                                   .
+                                                   .
+                                                   .
+                                                   .
+                                                   .
+                                                   .
+                        [ Code : %-10s     ]  .
+                                                   .
+                                                   .
+                                                   .
+                                                   .
+                                                   .
+                                                   .
+                                                   .""", this.entered_exit_code));
             }
-                        case 13 -> { // failure item
-                    return Item.to_lines("""
-                             .
-                             .
-                             .
-                             .
-                             .
-                             .
-                             .
-          WRONG CODE!!!      .
-                             .
-                             .
-                             .
-                             .
-                             .
-                             .
-                             .""");
-            }           
+            case 13 -> { // failure item
+                return Item.to_lines("""
+                                           .
+                                           .
+                                           .
+                                           .
+                                           .
+                                           .
+                                           .
+                        WRONG CODE!!!      .
+                                           .
+                                           .
+                                           .
+                                           .
+                                           .
+                                           .
+                                           .""");
+            }
         }
         // item that has no image
         return new String[] {
-            " ".repeat(30),
-            " ".repeat(30),
-            " ".repeat(30),
-            " ".repeat(30),
-            " ".repeat(30), // 5
-            " ".repeat(30),
-            " ".repeat(30),
-            " ".repeat(30),
-            " ".repeat(30),
-            " ".repeat(30), // 10
-            " ".repeat(30),
-            " ".repeat(30),
-            " ".repeat(30),
-            " ".repeat(30),
-            " ".repeat(30), // 15
+                " ".repeat(30),
+                " ".repeat(30),
+                " ".repeat(30),
+                " ".repeat(30),
+                " ".repeat(30), // 5
+                " ".repeat(30),
+                " ".repeat(30),
+                " ".repeat(30),
+                " ".repeat(30),
+                " ".repeat(30), // 10
+                " ".repeat(30),
+                " ".repeat(30),
+                " ".repeat(30),
+                " ".repeat(30),
+                " ".repeat(30), // 15
         };
     }
 }
 
-record Point(int x, int y) {}
+record Point(int x, int y) {
+}
