@@ -312,10 +312,12 @@ public class World {
         switch (Inputs.get_keypress()) {
             case Keybinds.MOVE_UP -> {
                 int new_pos = Math.max(0, this.player.y - 1);
+                // returns `true` if I can move over there
                 if ((check_coll(this.player.x, new_pos) && !this.opened_clue) || !COLLISIONS_ENABLED) {
                     this.player.y = new_pos;
                 }
             }
+            /* ... more cases down here */
             case Keybinds.MOVE_LEFT -> {
                 int new_pos = Math.max(0, this.player.x - 1);
                 if ((check_coll(new_pos, this.player.y) && !this.opened_clue) || !COLLISIONS_ENABLED) {
@@ -646,8 +648,8 @@ public class World {
                     return note;
                 } else if (20 < item_hash && item_hash <= 40) {
                     Item note = new Item(1);
-                    note.text = String.format("The code is: \n[%-10s]",
-                            Long.toString(this.EXIT_CODE).replace(" ", "0"));
+                    note.text = String.format("The code is: \n[%s]",
+                            String.format("%-10s", Long.toString(this.EXIT_CODE)).replace(" ", "0"));
                     return note;
                 } else if (found_clues.size() < clues.size()) {
                     Item note = new Item(1);
@@ -750,7 +752,7 @@ public class World {
         return choose_item(Utils.picker(loc_hash, 4), item_hash);
     }
 
-    private void win() {
+    public void win() {
         try {
             won = true;
             allowed_to_leave = false;
@@ -775,7 +777,6 @@ public class World {
             Thread.sleep(4000);
             System.out.println("Press Q to win.");
             allowed_to_leave = true; // goodbye :)
-            Thread.sleep(4000);
         } catch (InterruptedException e) {
             /* */
         }
